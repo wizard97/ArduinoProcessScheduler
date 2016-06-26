@@ -10,31 +10,72 @@ ServiceManager::ServiceManager()
 
 void ServiceManager::add(BaseService &service)
 {
-    service.setup();
-    service.setID(++_lastID);
-    appendNode(service);
+    // Make sure it is not added twice!
+    if (!findNode(service))
+    {
+        service.setup();
+        service.setID(++_lastID);
+        appendNode(service);
+    }
 }
 
 
+BaseService *ServiceManager::getCurrService()
+{
+    return _active;
+}
+
+bool ServiceManager::isRunningService(BaseService &service)
+{
+    return _active && service.getID() == _active->getID();
+}
+
+
+bool ServiceManager::isNotDestroyed(BaseService &service)
+{
+    return findNode(service);
+}
+
+bool ServiceManager::isEnabled(BaseService &service)
+{
+    return service.isEnabled();
+}
+
 void ServiceManager::disable(BaseService &service)
 {
-    service.onDisable();
-    service._enabled = false;
+    // If this task is not currently running
+    if (getCurrService() != &service) {
+        service.onDisable();
+        service._enabled = false;
+    } else { // Otherwise queue it
+        uint8_t flag = FLAG_DISABLE;
+        service.getFlagQueue()->add(service.getFlagQueue(), &flag);
+    }
 }
 
 
 void ServiceManager::enable(BaseService &service)
 {
-    service.onEnable();
-    service._enabled = true;
+    if (getCurrService() != &service) {
+        service.onEnable();
+        service._enabled = true;
+    } else {
+        uint8_t flag = FLAG_ENABLE;
+        service.getFlagQueue()->add(service.getFlagQueue(), &flag);
+    }
 }
 
 
 void ServiceManager::destroy(BaseService &service)
 {
-    disable(service);
-    service.cleanup();
-    removeNode(service);
+    if (getCurrService() != &service) {
+        disable(service);
+        service.cleanup();
+        removeNode(service);
+    } else {
+        uint8_t flag = FLAG_DESTROY;
+        service.getFlagQueue()->add(service.getFlagQueue(), &flag);
+    }
 }
 
 uint8_t ServiceManager::getID(BaseService &service)
@@ -44,19 +85,67 @@ uint8_t ServiceManager::getID(BaseService &service)
 
 int ServiceManager::run()
 {
-    // Nothing to run
-    if (!_head) return 0;
-
+    // Nothing to run or already running in another call frame
+    if (!_head || _active) return 0;
     int count = 0;
-    for (BaseService *next = _head; next->hasNext(); next = next->getNext(), count++)
+    for (_active = _head; _active != NULL ; _active = _active->getNext(), count++)
     {
-        next->service();
-    }
+        uint32_t ts = millis();
+        if (_active->isEnabled() &&
+            (_active->getPeriod() == SERVICE_CONSTANTLY || ts - _active->getLastRunTS() >= _active->getPeriod()))
+        {
+            if (_active->getIterations() == RUNTIME_FOREVER)
+            {
+                _active->service();
+                _active->updateRunTS(ts);
+            } else if (_active->getIterations() > 0) {
+                _active->service();
+                _active->updateRunTS(ts);
+                _active->decIterations();
+            }
+        }
 
+        processFlags(*_active);
+    }
+    _active = NULL;
     return count;
 }
 
 /************ PROTECTED ***************/
+void ServiceManager::processFlags(BaseService &node)
+{
+    // Process flags
+    RingBuf *queue = _active->getFlagQueue();
+
+    uint8_t flag;
+    while(queue->pull(queue, &flag)) // Empty Queue
+    {
+        switch (flag)
+        {
+            case FLAG_ENABLE:
+                if (!_active->isEnabled() && isRunningService(*_active))
+                    _active->enable();
+                break;
+
+            case FLAG_DISABLE:
+                if (_active->isEnabled() && isRunningService(*_active))
+                    _active->disable();
+                break;
+
+            case FLAG_DESTROY:
+                if (isRunningService(*_active))
+                    _active->destroy();
+                while(queue->pull(queue, &flag)); // Empty Queue
+                break;
+
+            default:
+                break;
+        }
+    }
+
+}
+
+
 bool ServiceManager::appendNode(BaseService &node)
 {
     node.setNext(NULL);

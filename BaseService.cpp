@@ -9,6 +9,13 @@
         this->_period = period;
         this->_iterations = iterations;
         this->_enabled = enabled;
+        this->_lastRunTS = 0;
+        _flags = RingBuf_new(sizeof(uint8_t), MAX_QUEUED_FLAGS);
+    }
+
+    BaseService::~BaseService()
+    {
+        RingBuf_delete(_flags);
     }
 
 
@@ -35,21 +42,8 @@
         return _sid;
     }
 
-    ServiceManager &BaseService::getManager()
-    {
-        return _manager;
-    }
 
 
-    int BaseService::getIterations()
-    {
-        return _iterations;
-    }
-
-    unsigned int BaseService::getPeriod()
-    {
-        return _period;
-    }
 
     /*********** PROTECTED *************/
 
@@ -62,24 +56,3 @@
 
 
     /*********** PRIVATE *************/
-    bool BaseService::hasNext()
-    {
-        return _next;
-    }
-
-
-    BaseService *BaseService::getNext()
-    {
-        return _next;
-    }
-
-
-    void BaseService::setNext(BaseService *next)
-    {
-        this->_next = next;
-    }
-
-    void BaseService::setID(uint8_t sid)
-    {
-        this->_sid = sid;
-    }
