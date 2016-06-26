@@ -2,7 +2,7 @@
 #define SCHEDULER_H
 
 #include "Arduino.h"
-#include "Config.h"
+#include "Extra.h"
 
 class Service;
 
@@ -11,19 +11,19 @@ class Scheduler
 
 public:
     Scheduler();
-    void add(Service &service);
-    void disable(Service &service);
-    void enable(Service &service);
-    void destroy(Service &service);
+    SchedulerAction add(Service &service);
+    SchedulerAction disable(Service &service);
+    SchedulerAction enable(Service &service);
+    SchedulerAction destroy(Service &service);
 
-    inline uint8_t getID(Service &service);
-    inline bool isRunningService(Service &service);
-    inline bool isNotDestroyed(Service &service);
-    inline bool isEnabled(Service &service);
+    uint8_t getID(Service &service);
+    bool isRunningService(Service &service);
+    bool isNotDestroyed(Service &service);
+    bool isEnabled(Service &service);
 
-    inline Service *getCurrService();
+    Service *getCurrService();
+    uint8_t countServices(bool enabledOnly = true);
     uint32_t getCurrTS();
-
 
     int run();
 protected:
@@ -38,13 +38,16 @@ protected:
     bool removeNode(Service &node); // true on success
     bool findNode(Service &node); // True if node exists in list
 
-    Service *_head;
+    Service *volatile _head;
     Service *_active;
     uint8_t _lastID;
+    volatile bool _locked; // Prevent modifications of the underlying linked list
 private:
 
 
 #ifdef _SERVICE_STATISTICS
+public:
+    void updateStats();
 private:
     void handleHistOverFlow(uint8_t div);
 

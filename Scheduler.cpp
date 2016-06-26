@@ -8,21 +8,34 @@ Scheduler::Scheduler()
     _lastID = 0;
 }
 
-void Scheduler::add(Service &service)
+SchedulerAction Scheduler::add(Service &service)
 {
     // Make sure it is not added twice!
-    if (!findNode(service))
+    if (!findNode(service) && !_locked && !isRunningService(service))
     {
+        _locked = true;
         service.setup();
         service.setID(++_lastID);
         appendNode(service);
+        _locked = false;
+        uint8_t tmp;
+        // Empty out flag buffer
+        while (service.getFlagQueue()->pull(service.getFlagQueue(), &tmp));
+#ifdef _SERVICE_STATISTICS
+        service.setHistRuntime(0);
+        service.setHistIterations(0);
+        service.setHistLoadPercent(0);
+#endif
+
+        return ACTION_SUCCESS;
     }
+    return ACTION_NONE;
 }
 
 
 uint32_t Scheduler::getCurrTS()
 {
-    return millis();
+    return TIMESTAMP();
 }
 
 Service *Scheduler::getCurrService()
@@ -32,7 +45,7 @@ Service *Scheduler::getCurrService()
 
 bool Scheduler::isRunningService(Service &service)
 {
-    return _active && service.getID() == _active->getID();
+    return _active && &service == _active;
 }
 
 
@@ -46,42 +59,67 @@ bool Scheduler::isEnabled(Service &service)
     return service.isEnabled();
 }
 
-void Scheduler::disable(Service &service)
+SchedulerAction Scheduler::disable(Service &service)
 {
-    // If this task is not currently running
-    if (getCurrService() != &service) {
-        setDisable(service);
-    } else { // Otherwise queue it
+    if (service.locked()) { // Queue it
         uint8_t flag = Service::FLAG_DISABLE;
         service.getFlagQueue()->add(service.getFlagQueue(), &flag);
+        return ACTION_QUEUED;
+    } else if (service.isEnabled() && isNotDestroyed(service)) {
+        setDisable(service);
+        return ACTION_SUCCESS;
+    } else {
+        return ACTION_NONE;
     }
 }
 
 
-void Scheduler::enable(Service &service)
+SchedulerAction Scheduler::enable(Service &service)
 {
-    if (getCurrService() != &service) {
-        setEnable(service);
-    } else {
+    if (service.locked()) { // Queue it
         uint8_t flag = Service::FLAG_ENABLE;
         service.getFlagQueue()->add(service.getFlagQueue(), &flag);
+        return ACTION_QUEUED;
+    } else if (!service.isEnabled() && isNotDestroyed(service)) {
+        setEnable(service);
+        return ACTION_SUCCESS;
+    } else {
+        return ACTION_NONE;
     }
 }
 
 
-void Scheduler::destroy(Service &service)
+SchedulerAction Scheduler::destroy(Service &service)
 {
-    if (getCurrService() != &service) {
+    if (!service.locked() && isNotDestroyed(service) && !_locked) {
+        _locked = true;
         setDestroy(service);
+        _locked = false;
+        return ACTION_SUCCESS;
     } else {
         uint8_t flag = Service::FLAG_DESTROY;
         service.getFlagQueue()->add(service.getFlagQueue(), &flag);
+        return ACTION_QUEUED;
     }
 }
 
 uint8_t Scheduler::getID(Service &service)
 {
     return service.getID();
+}
+
+uint8_t Scheduler::countServices(bool enabledOnly)
+{
+    if (_locked)
+        return 0;
+    _locked = true;
+    uint8_t count=0;
+    for (Service *curr = _head; curr != NULL; curr = curr->getNext())
+    {
+        count += enabledOnly ? curr->isEnabled() : 1;
+    }
+    _locked = false; // restore
+    return count;
 }
 
 int Scheduler::run()
@@ -91,6 +129,7 @@ int Scheduler::run()
     int count = 0;
     for (_active = _head; _active != NULL ; _active = _active->getNext(), count++)
     {
+        _active->lock(); // Lock changes to it!
         uint32_t start = getCurrTS(), runTime;
 
         if (_active->isEnabled() &&
@@ -125,8 +164,8 @@ int Scheduler::run()
 #endif
 
         }
-
         processFlags(*_active);
+        _active->unlock();
     }
 
     _active = NULL;
@@ -159,10 +198,12 @@ void Scheduler::setDestroy(Service &service)
 
 
 
-
-// This method should only be called if not inside service!
+//only call if safe to do so
 void Scheduler::processFlags(Service &node)
 {
+    if (_locked)
+        return;
+    _locked = true;
     // Process flags
     RingBuf *queue = _active->getFlagQueue();
 
@@ -172,29 +213,63 @@ void Scheduler::processFlags(Service &node)
         switch (flag)
         {
             case Service::FLAG_ENABLE:
-                if (!_active->isEnabled() && isRunningService(*_active))
+                if (!_active->isEnabled() && isNotDestroyed(*_active))
                     setEnable(*_active);
                 break;
 
             case Service::FLAG_DISABLE:
-                if (_active->isEnabled() && isRunningService(*_active))
+                if (_active->isEnabled() && isNotDestroyed(*_active))
                     setDisable(*_active);
                 break;
 
             case Service::FLAG_DESTROY:
-                if (isRunningService(*_active))
+                if (isNotDestroyed(*_active))
+                {
                     setDestroy(*_active);
-                while(queue->pull(queue, &flag)); // Empty Queue
+                    while(queue->pull(queue, &flag)); // Empty Queue
+                }
                 break;
 
             default:
                 break;
         }
     }
+    _locked = false;
 
 }
 
 #ifdef _SERVICE_STATISTICS
+
+void Scheduler::updateStats()
+{
+    if (_locked)
+        return;
+    uint8_t count = countServices(false);
+    HISTORY_TIME_TYPE sTime[count];
+
+    // Thread safe in case of interrupts
+    HISTORY_TIME_TYPE totalTime;
+    uint8_t i;
+    Service *n;
+    for(n = _head, i=0, totalTime=0; n != NULL && i < count; n = n->getNext(), i++)
+    {
+        // to ensure no overflows
+        sTime[i] = n->getHistRunTime() / count;
+        totalTime += sTime[i];
+    }
+
+    for(i=0, n = _head; n != NULL && i < count; n = n->getNext(), i++)
+    {
+        // to ensure no overflows have to use double
+        if (!totalTime) {
+            n->setHistLoadPercent(0);
+        } else {
+            double tmp = 100*((double)sTime[i]/(double)totalTime);
+            n->setHistLoadPercent((uint8_t)tmp);
+        }
+    }
+
+}
 
 void Scheduler::handleHistOverFlow(uint8_t div)
 {

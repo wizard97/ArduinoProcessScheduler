@@ -4,7 +4,7 @@
 #include "Arduino.h"
 #include "RingBuf.h"
 #include "Scheduler.h"
-#include "Config.h"
+#include "Extra.h"
 
 // Service period
 #define SERVICE_CONSTANTLY 0
@@ -29,11 +29,11 @@ public:
             int iterations=RUNTIME_FOREVER, bool enabled=true);
     ~Service();
     int getID();
-    inline Scheduler &getManager() { return _scheduler; }
-    void add();
-    void disable();
-    void enable();
-    void destroy();
+    inline Scheduler &scheduler() { return _scheduler; }
+    SchedulerAction add();
+    SchedulerAction disable();
+    SchedulerAction enable();
+    SchedulerAction destroy();
 
     inline int32_t timeToNextRun() { return (_scheduledTS + _period) - _scheduler.getCurrTS(); };
     inline uint32_t getScheduledTS() { return _scheduledTS; }; // The ts the most recent iteration should of started
@@ -74,6 +74,9 @@ private:
     inline void setScheduledTS(uint32_t ts) { _scheduledTS = ts; }
     inline void setActualTS(uint32_t ts) { _actualTS = ts; }
 
+    inline void lock() { _locked = true; }
+    inline void unlock() { _locked = false; }
+    inline bool locked() { return _locked; }
 
     Scheduler &_scheduler;
     bool _enabled;
@@ -86,25 +89,29 @@ private:
     RingBuf* _flags;
     // Linked List
     Service *_next;
+    //Locks changes
+    volatile bool _locked;
 
 
 
-    #ifdef _SERVICE_STATISTICS
+#ifdef _SERVICE_STATISTICS
 public:
     uint32_t getAvgRunTime();
-
+    inline uint8_t getLoadPercent() { return _histLoadPercent; }
 private:
     bool statsWillOverflow(HISTORY_COUNT_TYPE iter, HISTORY_TIME_TYPE tm);
     void divStats(uint8_t div);
     inline void setHistIterations(HISTORY_COUNT_TYPE val) { _histIterations = val; }
     inline void setHistRuntime(HISTORY_TIME_TYPE val) { _histRunTime = val; }
+    inline void setHistLoadPercent(uint8_t percent) { _histLoadPercent = percent; }
     inline HISTORY_COUNT_TYPE getHistIterations() { return _histIterations; }
     inline HISTORY_TIME_TYPE getHistRunTime() { return _histRunTime; }
 
     HISTORY_COUNT_TYPE _histIterations;
     HISTORY_TIME_TYPE _histRunTime;
+    uint8_t _histLoadPercent;
 
-    #endif
+#endif
 };
 
 

@@ -11,6 +11,7 @@
         this->_enabled = enabled;
         this->_scheduledTS = _scheduler.getCurrTS();
         this->_actualTS = _scheduler.getCurrTS();
+        this->_locked = false;
         _flags = RingBuf_new(sizeof(uint8_t), MAX_QUEUED_FLAGS);
     }
 
@@ -21,26 +22,26 @@
 
 
 
-    void Service::disable()
+    SchedulerAction Service::disable()
     {
-        _scheduler.disable(*this);
+        return _scheduler.disable(*this);
     }
 
 
-    void Service::enable()
+    SchedulerAction Service::enable()
     {
-        _scheduler.enable(*this);
+        return _scheduler.enable(*this);
     }
 
 
-    void Service::destroy()
+    SchedulerAction Service::destroy()
     {
-        _scheduler.destroy(*this);
+        return _scheduler.destroy(*this);
     }
 
-    void Service::add()
+    SchedulerAction Service::add()
     {
-        _scheduler.add(*this);
+        return _scheduler.add(*this);
     }
 
     /* GETTERS */
@@ -62,8 +63,8 @@
     void Service::onDisable() { return; }
 
 
-    /*********** PRIVATE *************/
-    #ifdef _SERVICE_STATISTICS
+
+#ifdef _SERVICE_STATISTICS
 
     uint32_t Service::getAvgRunTime()
     {
@@ -84,4 +85,5 @@
         ++_histIterations /= div;
         ++_histRunTime /= div;
     }
-    #endif
+
+#endif
