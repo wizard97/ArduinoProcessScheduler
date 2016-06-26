@@ -92,28 +92,32 @@ int ServiceManager::run()
     {
         uint32_t ts = millis();
         if (_active->isEnabled() &&
-            (_active->getPeriod() == SERVICE_CONSTANTLY || ts - _active->getLastRunTS() >= _active->getPeriod()))
+            (_active->getPeriod() == SERVICE_CONSTANTLY || ts - _active->getLastRunTS() >= _active->getPeriod()) &&
+            (_active->getIterations() == RUNTIME_FOREVER || _active->getIterations() > 0))
         {
-            if (_active->getIterations() == RUNTIME_FOREVER)
+            _active->service();
+            _active->updateRunTS(ts);
+
+            if (_active->getIterations() > 0)
             {
-                _active->service();
-                _active->updateRunTS(ts);
-            } else if (_active->getIterations() > 0) {
-                _active->service();
-                _active->updateRunTS(ts);
                 _active->decIterations();
+                if (_active->getIterations() == 0)
+                    _active->disable();
             }
         }
 
         processFlags(*_active);
     }
+
     _active = NULL;
+
     return count;
 }
 
 /************ PROTECTED ***************/
 void ServiceManager::processFlags(BaseService &node)
 {
+    if (!_active) return;
     // Process flags
     RingBuf *queue = _active->getFlagQueue();
 
@@ -128,6 +132,7 @@ void ServiceManager::processFlags(BaseService &node)
                 break;
 
             case FLAG_DISABLE:
+                Serial.println("Disabling");
                 if (_active->isEnabled() && isRunningService(*_active))
                     _active->disable();
                 break;
