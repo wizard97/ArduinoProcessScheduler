@@ -1,9 +1,9 @@
-#ifndef BASE_SERVICE_H
-#define BASE_SERVICE_H
+#ifndef SERVICE_H
+#define SERVICE_H
 
 #include "Arduino.h"
 #include "RingBuf.h"
-#include "ServiceManager.h"
+#include "Scheduler.h"
 
 // Service period
 #define SERVICE_CONSTANTLY 0
@@ -17,7 +17,7 @@
 
 #define MAX_QUEUED_FLAGS 5
 
-class ServiceManager;
+class Scheduler;
 
 typedef enum ServiceFlags
 {
@@ -26,26 +26,30 @@ typedef enum ServiceFlags
     FLAG_DESTROY
 } ServiceFlags;
 
-class BaseService
+class Service
 {
-    friend class ServiceManager;
+    friend class Scheduler;
 public:
-    BaseService(ServiceManager &manager, unsigned int period,
+    Service(Scheduler &manager, unsigned int period,
             int iterations=RUNTIME_FOREVER, bool enabled=true);
-    ~BaseService();
+    ~Service();
     int getID();
-    inline ServiceManager &getManager() { return _manager; }
+    inline Scheduler &getManager() { return _scheduler; }
     void disable();
     void enable();
     void destroy();
 
+    inline int32_t timeToNextRun() { return (_scheduledTS + _period) - _scheduler.getCurrTS(); };
+    inline uint32_t getScheduledTS() { return _scheduledTS; }; // The ts the most recent iteration should of started
+    inline uint32_t getActualRunTS() { return _actualTS; }
+
     inline bool isEnabled() { return _enabled; }
-    inline bool isNotDestroyed() { return _manager.isNotDestroyed(*this); }
-    inline uint32_t getLastSetRunTS() { return _lastSetRunTS; }
+    inline bool isNotDestroyed() { return _scheduler.isNotDestroyed(*this); }
     inline int getIterations() { return _iterations; } // might return RUNTIME_FOREVER
     inline unsigned int getPeriod() { return _period; }
 
 protected:
+    inline uint32_t getStartDelay() { return _actualTS - _scheduledTS; }
     // Fired on creation/destroy
     virtual void setup();
     virtual void cleanup();
@@ -58,25 +62,27 @@ protected:
 private:
     inline bool hasNext() { return _next; }
     // GETTERS
-    inline BaseService *getNext() { return _next; }
+    inline Service *getNext() { return _next; }
     inline RingBuf *getFlagQueue() { return _flags; }
     // SETTERS
-    inline void setNext(BaseService *next) { this->_next = next; }
+    inline void setNext(Service *next) { this->_next = next; }
     inline void setID(uint8_t sid) { this->_sid = sid; }
     inline void decIterations() { _iterations--; }
-    inline void updateRunTS(uint32_t ts) { _lastSetRunTS = ts; }
+    inline void setScheduledTS(uint32_t ts) { _scheduledTS = ts; }
+    inline void setActualTS(uint32_t ts) { _actualTS = ts; }
 
-    ServiceManager &_manager;
+
+    Scheduler &_scheduler;
     bool _enabled;
     int _iterations;
     unsigned int _period;
     uint8_t _sid;
-    uint32_t _lastSetRunTS;
+    uint32_t _scheduledTS, _actualTS;
 
     // Flag queue
     RingBuf* _flags;
     // Linked List
-    BaseService *_next;
+    Service *_next;
 };
 
 #endif

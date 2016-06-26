@@ -1,14 +1,14 @@
-#include "ServiceManager.h"
-#include "BaseService.h"
+#include "Scheduler.h"
+#include "Service.h"
 
 
-ServiceManager::ServiceManager()
+Scheduler::Scheduler()
 {
     _head = NULL;
     _lastID = 0;
 }
 
-void ServiceManager::add(BaseService &service)
+void Scheduler::add(Service &service)
 {
     // Make sure it is not added twice!
     if (!findNode(service))
@@ -20,28 +20,33 @@ void ServiceManager::add(BaseService &service)
 }
 
 
-BaseService *ServiceManager::getCurrService()
+uint32_t Scheduler::getCurrTS()
+{
+    return millis();
+}
+
+Service *Scheduler::getCurrService()
 {
     return _active;
 }
 
-bool ServiceManager::isRunningService(BaseService &service)
+bool Scheduler::isRunningService(Service &service)
 {
     return _active && service.getID() == _active->getID();
 }
 
 
-bool ServiceManager::isNotDestroyed(BaseService &service)
+bool Scheduler::isNotDestroyed(Service &service)
 {
     return findNode(service);
 }
 
-bool ServiceManager::isEnabled(BaseService &service)
+bool Scheduler::isEnabled(Service &service)
 {
     return service.isEnabled();
 }
 
-void ServiceManager::disable(BaseService &service)
+void Scheduler::disable(Service &service)
 {
     // If this task is not currently running
     if (getCurrService() != &service) {
@@ -53,7 +58,7 @@ void ServiceManager::disable(BaseService &service)
 }
 
 
-void ServiceManager::enable(BaseService &service)
+void Scheduler::enable(Service &service)
 {
     if (getCurrService() != &service) {
         setEnable(service);
@@ -64,7 +69,7 @@ void ServiceManager::enable(BaseService &service)
 }
 
 
-void ServiceManager::destroy(BaseService &service)
+void Scheduler::destroy(Service &service)
 {
     if (getCurrService() != &service) {
         setDestroy(service);
@@ -74,27 +79,30 @@ void ServiceManager::destroy(BaseService &service)
     }
 }
 
-uint8_t ServiceManager::getID(BaseService &service)
+uint8_t Scheduler::getID(Service &service)
 {
     return service.getID();
 }
 
-int ServiceManager::run()
+int Scheduler::run()
 {
     // Nothing to run or already running in another call frame
     if (!_head || _active) return 0;
     int count = 0;
     for (_active = _head; _active != NULL ; _active = _active->getNext(), count++)
     {
-        uint32_t ts = millis();
+        uint32_t ts = getCurrTS();
         if (_active->isEnabled() &&
-            (_active->getPeriod() == SERVICE_CONSTANTLY || ts - _active->getLastSetRunTS() >= _active->getPeriod()) &&
+            (_active->getPeriod() == SERVICE_CONSTANTLY || ts - _active->getScheduledTS() >= _active->getPeriod()) &&
             (_active->getIterations() == RUNTIME_FOREVER || _active->getIterations() > 0))
         {
-            _active->service();
-
             if (_active->getPeriod() != SERVICE_CONSTANTLY)
-                _active->updateRunTS(_active->getLastSetRunTS() + _active->getPeriod());
+                _active->setScheduledTS(_active->getScheduledTS() + _active->getPeriod());
+            else
+                _active->setScheduledTS(getCurrTS());
+
+            _active->setActualTS(ts);
+            _active->service();
 
             if (_active->getIterations() > 0)
             {
@@ -114,21 +122,21 @@ int ServiceManager::run()
 
 /************ PROTECTED ***************/
 
-void ServiceManager::setDisable(BaseService &service)
+void Scheduler::setDisable(Service &service)
 {
     service.onDisable();
     service._enabled = false;
 }
 
 
-void ServiceManager::setEnable(BaseService &service)
+void Scheduler::setEnable(Service &service)
 {
     service.onEnable();
     service._enabled = true;
 }
 
 
-void ServiceManager::setDestroy(BaseService &service)
+void Scheduler::setDestroy(Service &service)
 {
     setDisable(service);
     service.cleanup();
@@ -136,7 +144,7 @@ void ServiceManager::setDestroy(BaseService &service)
 }
 
 // This method should only be called if not inside service!
-void ServiceManager::processFlags(BaseService &node)
+void Scheduler::processFlags(Service &node)
 {
     // Process flags
     RingBuf *queue = _active->getFlagQueue();
@@ -170,14 +178,14 @@ void ServiceManager::processFlags(BaseService &node)
 }
 
 
-bool ServiceManager::appendNode(BaseService &node)
+bool Scheduler::appendNode(Service &node)
 {
     node.setNext(NULL);
 
     if (!_head) {
         _head = &node;
     } else {
-        BaseService *next = _head;
+        Service *next = _head;
         for(; next->hasNext(); next = next->getNext()); //run through list
         // Update pointers
         next->setNext(&node);
@@ -185,13 +193,13 @@ bool ServiceManager::appendNode(BaseService &node)
     return true;
 }
 
-bool ServiceManager::removeNode(BaseService &node)
+bool Scheduler::removeNode(Service &node)
 {
     if (&node == _head) { // node is head
         _head = node.getNext();
     } else {
         // Find the previous node
-        BaseService *prev = _head;
+        Service *prev = _head;
         for (; prev != NULL && prev->getNext() != &node; prev = prev->getNext());
 
         if (!prev) return false; // previous node does not exist
@@ -201,9 +209,9 @@ bool ServiceManager::removeNode(BaseService &node)
 }
 
 
-bool ServiceManager::findNode(BaseService &node)
+bool Scheduler::findNode(Service &node)
 {
-    BaseService *prev = _head;
+    Service *prev = _head;
     for (; prev != NULL && prev->getNext() != &node; prev = prev->getNext());
     return prev;
 }
