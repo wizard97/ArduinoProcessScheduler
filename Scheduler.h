@@ -2,6 +2,7 @@
 #define SCHEDULER_H
 
 #include "Arduino.h"
+#include "Config.h"
 
 class Service;
 
@@ -41,6 +42,13 @@ protected:
     Service *_active;
     uint8_t _lastID;
 private:
+
+
+#ifdef _SERVICE_STATISTICS
+private:
+    void handleHistOverFlow(uint8_t div);
+
+#endif
 
 };
 

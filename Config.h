@@ -1,0 +1,13 @@
+#ifndef SCHEDULER_SERVICE_CONFIG_H
+#define SCHEDULER_SERVICE_CONFIG_H
+
+#define _SERVICE_STATISTICS
+
+#ifdef _SERVICE_STATISTICS
+    #define HISTORY_COUNT_TYPE uint32_t
+    #define HISTORY_TIME_TYPE uint32_t
+
+    #define HISTORY_DIV_FACTOR 2
+#endif
+
+#endif

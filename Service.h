@@ -4,6 +4,7 @@
 #include "Arduino.h"
 #include "RingBuf.h"
 #include "Scheduler.h"
+#include "Config.h"
 
 // Service period
 #define SERVICE_CONSTANTLY 0
@@ -19,12 +20,6 @@
 
 class Scheduler;
 
-typedef enum ServiceFlags
-{
-    FLAG_ENABLE = 0,
-    FLAG_DISABLE,
-    FLAG_DESTROY
-} ServiceFlags;
 
 class Service
 {
@@ -35,6 +30,7 @@ public:
     ~Service();
     int getID();
     inline Scheduler &getManager() { return _scheduler; }
+    void add();
     void disable();
     void enable();
     void destroy();
@@ -60,6 +56,13 @@ protected:
     virtual void service() = 0;
 
 private:
+    enum ServiceFlags
+    {
+        FLAG_ENABLE = 0,
+        FLAG_DISABLE,
+        FLAG_DESTROY
+    };
+
     inline bool hasNext() { return _next; }
     // GETTERS
     inline Service *getNext() { return _next; }
@@ -83,6 +86,27 @@ private:
     RingBuf* _flags;
     // Linked List
     Service *_next;
+
+
+
+    #ifdef _SERVICE_STATISTICS
+public:
+    uint32_t getAvgRunTime();
+
+private:
+    bool statsWillOverflow(HISTORY_COUNT_TYPE iter, HISTORY_TIME_TYPE tm);
+    void divStats(uint8_t div);
+    inline void setHistIterations(HISTORY_COUNT_TYPE val) { _histIterations = val; }
+    inline void setHistRuntime(HISTORY_TIME_TYPE val) { _histRunTime = val; }
+    inline HISTORY_COUNT_TYPE getHistIterations() { return _histIterations; }
+    inline HISTORY_TIME_TYPE getHistRunTime() { return _histRunTime; }
+
+    HISTORY_COUNT_TYPE _histIterations;
+    HISTORY_TIME_TYPE _histRunTime;
+
+    #endif
 };
+
+
 
 #endif

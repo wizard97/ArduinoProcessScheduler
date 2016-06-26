@@ -38,6 +38,11 @@
         _scheduler.destroy(*this);
     }
 
+    void Service::add()
+    {
+        _scheduler.add(*this);
+    }
+
     /* GETTERS */
     int Service::getID()
     {
@@ -58,3 +63,25 @@
 
 
     /*********** PRIVATE *************/
+    #ifdef _SERVICE_STATISTICS
+
+    uint32_t Service::getAvgRunTime()
+    {
+        if (!_histIterations)
+            return 0;
+
+        return _histRunTime / _histIterations;
+    }
+
+    bool Service::statsWillOverflow(HISTORY_COUNT_TYPE iter, HISTORY_TIME_TYPE tm)
+    {
+        return (_histIterations > _histIterations + iter) || (_histRunTime > _histRunTime + tm);
+
+    }
+
+    void Service::divStats(uint8_t div)
+    {
+        ++_histIterations /= div;
+        ++_histRunTime /= div;
+    }
+    #endif

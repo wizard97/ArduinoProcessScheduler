@@ -52,7 +52,7 @@ void Scheduler::disable(Service &service)
     if (getCurrService() != &service) {
         setDisable(service);
     } else { // Otherwise queue it
-        uint8_t flag = FLAG_DISABLE;
+        uint8_t flag = Service::FLAG_DISABLE;
         service.getFlagQueue()->add(service.getFlagQueue(), &flag);
     }
 }
@@ -63,7 +63,7 @@ void Scheduler::enable(Service &service)
     if (getCurrService() != &service) {
         setEnable(service);
     } else {
-        uint8_t flag = FLAG_ENABLE;
+        uint8_t flag = Service::FLAG_ENABLE;
         service.getFlagQueue()->add(service.getFlagQueue(), &flag);
     }
 }
@@ -74,7 +74,7 @@ void Scheduler::destroy(Service &service)
     if (getCurrService() != &service) {
         setDestroy(service);
     } else {
-        uint8_t flag = FLAG_DESTROY;
+        uint8_t flag = Service::FLAG_DESTROY;
         service.getFlagQueue()->add(service.getFlagQueue(), &flag);
     }
 }
@@ -91,9 +91,10 @@ int Scheduler::run()
     int count = 0;
     for (_active = _head; _active != NULL ; _active = _active->getNext(), count++)
     {
-        uint32_t ts = getCurrTS();
+        uint32_t start = getCurrTS(), runTime;
+
         if (_active->isEnabled() &&
-            (_active->getPeriod() == SERVICE_CONSTANTLY || ts - _active->getScheduledTS() >= _active->getPeriod()) &&
+            (_active->getPeriod() == SERVICE_CONSTANTLY || start - _active->getScheduledTS() >= _active->getPeriod()) &&
             (_active->getIterations() == RUNTIME_FOREVER || _active->getIterations() > 0))
         {
             if (_active->getPeriod() != SERVICE_CONSTANTLY)
@@ -101,8 +102,10 @@ int Scheduler::run()
             else
                 _active->setScheduledTS(getCurrTS());
 
-            _active->setActualTS(ts);
+            _active->setActualTS(start);
             _active->service();
+
+            runTime = getCurrTS() - start;
 
             if (_active->getIterations() > 0)
             {
@@ -110,6 +113,17 @@ int Scheduler::run()
                 if (_active->getIterations() == 0)
                     _active->disable();
             }
+
+#ifdef _SERVICE_STATISTICS
+            // Make sure no overflow happens
+            if (_active->statsWillOverflow(1, runTime))
+                handleHistOverFlow(HISTORY_DIV_FACTOR);
+
+            _active->setHistIterations(_active->getHistIterations()+1);
+            _active->setHistRuntime(_active->getHistRunTime()+runTime);
+
+#endif
+
         }
 
         processFlags(*_active);
@@ -143,6 +157,9 @@ void Scheduler::setDestroy(Service &service)
     removeNode(service);
 }
 
+
+
+
 // This method should only be called if not inside service!
 void Scheduler::processFlags(Service &node)
 {
@@ -154,17 +171,17 @@ void Scheduler::processFlags(Service &node)
     {
         switch (flag)
         {
-            case FLAG_ENABLE:
+            case Service::FLAG_ENABLE:
                 if (!_active->isEnabled() && isRunningService(*_active))
                     setEnable(*_active);
                 break;
 
-            case FLAG_DISABLE:
+            case Service::FLAG_DISABLE:
                 if (_active->isEnabled() && isRunningService(*_active))
                     setDisable(*_active);
                 break;
 
-            case FLAG_DESTROY:
+            case Service::FLAG_DESTROY:
                 if (isRunningService(*_active))
                     setDestroy(*_active);
                 while(queue->pull(queue, &flag)); // Empty Queue
@@ -177,6 +194,15 @@ void Scheduler::processFlags(Service &node)
 
 }
 
+#ifdef _SERVICE_STATISTICS
+
+void Scheduler::handleHistOverFlow(uint8_t div)
+{
+    for(Service *n = _head; n != NULL; n = n->getNext())
+        n->divStats(div);
+}
+
+#endif
 
 bool Scheduler::appendNode(Service &node)
 {
