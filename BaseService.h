@@ -41,7 +41,7 @@ public:
 
     inline bool isEnabled() { return _enabled; }
     inline bool isNotDestroyed() { return _manager.isNotDestroyed(*this); }
-    inline uint32_t getLastRunTS() { return _lastRunTS; }
+    inline uint32_t getLastSetRunTS() { return _lastSetRunTS; }
     inline int getIterations() { return _iterations; } // might return RUNTIME_FOREVER
     inline unsigned int getPeriod() { return _period; }
 
@@ -64,14 +64,14 @@ private:
     inline void setNext(BaseService *next) { this->_next = next; }
     inline void setID(uint8_t sid) { this->_sid = sid; }
     inline void decIterations() { _iterations--; }
-    inline void updateRunTS(uint32_t ts) { _lastRunTS = ts; }
+    inline void updateRunTS(uint32_t ts) { _lastSetRunTS = ts; }
 
     ServiceManager &_manager;
     bool _enabled;
     int _iterations;
     unsigned int _period;
     uint8_t _sid;
-    uint32_t _lastRunTS;
+    uint32_t _lastSetRunTS;
 
     // Flag queue
     RingBuf* _flags;

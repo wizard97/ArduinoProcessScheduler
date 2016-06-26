@@ -45,8 +45,7 @@ void ServiceManager::disable(BaseService &service)
 {
     // If this task is not currently running
     if (getCurrService() != &service) {
-        service.onDisable();
-        service._enabled = false;
+        setDisable(service);
     } else { // Otherwise queue it
         uint8_t flag = FLAG_DISABLE;
         service.getFlagQueue()->add(service.getFlagQueue(), &flag);
@@ -57,8 +56,7 @@ void ServiceManager::disable(BaseService &service)
 void ServiceManager::enable(BaseService &service)
 {
     if (getCurrService() != &service) {
-        service.onEnable();
-        service._enabled = true;
+        setEnable(service);
     } else {
         uint8_t flag = FLAG_ENABLE;
         service.getFlagQueue()->add(service.getFlagQueue(), &flag);
@@ -69,9 +67,7 @@ void ServiceManager::enable(BaseService &service)
 void ServiceManager::destroy(BaseService &service)
 {
     if (getCurrService() != &service) {
-        disable(service);
-        service.cleanup();
-        removeNode(service);
+        setDestroy(service);
     } else {
         uint8_t flag = FLAG_DESTROY;
         service.getFlagQueue()->add(service.getFlagQueue(), &flag);
@@ -92,11 +88,13 @@ int ServiceManager::run()
     {
         uint32_t ts = millis();
         if (_active->isEnabled() &&
-            (_active->getPeriod() == SERVICE_CONSTANTLY || ts - _active->getLastRunTS() >= _active->getPeriod()) &&
+            (_active->getPeriod() == SERVICE_CONSTANTLY || ts - _active->getLastSetRunTS() >= _active->getPeriod()) &&
             (_active->getIterations() == RUNTIME_FOREVER || _active->getIterations() > 0))
         {
             _active->service();
-            _active->updateRunTS(ts);
+
+            if (_active->getPeriod() != SERVICE_CONSTANTLY)
+                _active->updateRunTS(_active->getLastSetRunTS() + _active->getPeriod());
 
             if (_active->getIterations() > 0)
             {
@@ -115,9 +113,31 @@ int ServiceManager::run()
 }
 
 /************ PROTECTED ***************/
+
+void ServiceManager::setDisable(BaseService &service)
+{
+    service.onDisable();
+    service._enabled = false;
+}
+
+
+void ServiceManager::setEnable(BaseService &service)
+{
+    service.onEnable();
+    service._enabled = true;
+}
+
+
+void ServiceManager::setDestroy(BaseService &service)
+{
+    setDisable(service);
+    service.cleanup();
+    removeNode(service);
+}
+
+// This method should only be called if not inside service!
 void ServiceManager::processFlags(BaseService &node)
 {
-    if (!_active) return;
     // Process flags
     RingBuf *queue = _active->getFlagQueue();
 
@@ -128,18 +148,17 @@ void ServiceManager::processFlags(BaseService &node)
         {
             case FLAG_ENABLE:
                 if (!_active->isEnabled() && isRunningService(*_active))
-                    _active->enable();
+                    setEnable(*_active);
                 break;
 
             case FLAG_DISABLE:
-                Serial.println("Disabling");
                 if (_active->isEnabled() && isRunningService(*_active))
-                    _active->disable();
+                    setDisable(*_active);
                 break;
 
             case FLAG_DESTROY:
                 if (isRunningService(*_active))
-                    _active->destroy();
+                    setDestroy(*_active);
                 while(queue->pull(queue, &flag)); // Empty Queue
                 break;
 

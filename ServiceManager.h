@@ -25,6 +25,11 @@ public:
 
     int run();
 protected:
+    // Methods that can be called while inside a service
+    void setDisable(BaseService &service);
+    void setEnable(BaseService &service);
+    void setDestroy(BaseService &service);
+
     void processFlags(BaseService &node);
     // Linked list methods
     bool appendNode(BaseService &node); // true on success

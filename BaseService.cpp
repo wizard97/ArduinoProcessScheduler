@@ -9,7 +9,7 @@
         this->_period = period;
         this->_iterations = iterations;
         this->_enabled = enabled;
-        this->_lastRunTS = 0;
+        this->_lastSetRunTS = 0;
         _flags = RingBuf_new(sizeof(uint8_t), MAX_QUEUED_FLAGS);
     }
 
