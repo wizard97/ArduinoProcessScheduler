@@ -1,10 +1,9 @@
 #ifndef SERVICE_H
 #define SERVICE_H
 
-#include "Arduino.h"
 #include "RingBuf.h"
 #include "Scheduler.h"
-#include "Extra.h"
+#include "Includes.h"
 
 // Service period
 #define SERVICE_CONSTANTLY 0
@@ -44,6 +43,8 @@ public:
     inline int getIterations() { return _iterations; } // might return RUNTIME_FOREVER
     inline unsigned int getPeriod() { return _period; }
 
+    inline void force() { _force = true; }
+
 protected:
     inline uint32_t getStartDelay() { return _actualTS - _scheduledTS; }
     // Fired on creation/destroy
@@ -63,8 +64,12 @@ private:
         FLAG_DESTROY
     };
 
+    void willService(uint32_t ts);
+    void wasServiced(bool wasForced);
+    bool needsServicing(uint32_t start);
     inline bool hasNext() { return _next; }
     // GETTERS
+    inline bool forceSet() { return _force; }
     inline Service *getNext() { return _next; }
     inline RingBuf *getFlagQueue() { return _flags; }
     // SETTERS
@@ -79,7 +84,7 @@ private:
     inline bool locked() { return _locked; }
 
     Scheduler &_scheduler;
-    bool _enabled;
+    bool _enabled, _force;
     int _iterations;
     unsigned int _period;
     uint8_t _sid;

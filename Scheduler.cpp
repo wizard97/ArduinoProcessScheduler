@@ -10,26 +10,44 @@ Scheduler::Scheduler()
 
 SchedulerAction Scheduler::add(Service &service)
 {
-    // Make sure it is not added twice!
-    if (!findNode(service) && !_locked && !isRunningService(service))
-    {
+    // Lock changes to linked list
+    if (!_locked)
         _locked = true;
-        service.setup();
-        service.setID(++_lastID);
-        appendNode(service);
-        _locked = false;
-        uint8_t tmp;
-        // Empty out flag buffer
-        while (service.getFlagQueue()->pull(service.getFlagQueue(), &tmp));
+    else
+        return ACTION_NONE;
+
+    // Lock changes to service
+    if (!service.locked()) {
+        service.lock();
+
+        // Make sure it is not added twice!
+        if (!findNode(service) && !isRunningService(service))
+        {
+            // Empty flag queue
+            uint8_t tmp;
+            while (service.getFlagQueue()->pull(service.getFlagQueue(), &tmp));
+
+            service.setup();
+            service.setID(++_lastID);
+            appendNode(service);
+            // Empty out flag buffer
+
 #ifdef _SERVICE_STATISTICS
-        service.setHistRuntime(0);
-        service.setHistIterations(0);
-        service.setHistLoadPercent(0);
+            service.setHistRuntime(0);
+            service.setHistIterations(0);
+            service.setHistLoadPercent(0);
 #endif
 
-        return ACTION_SUCCESS;
+            _locked = false;
+            service.unlock();
+            return ACTION_SUCCESS;
+        }
+
     }
+
+    _locked = false;
     return ACTION_NONE;
+
 }
 
 
@@ -61,46 +79,74 @@ bool Scheduler::isEnabled(Service &service)
 
 SchedulerAction Scheduler::disable(Service &service)
 {
-    if (service.locked()) { // Queue it
+    SchedulerAction ret = ACTION_NONE;
+    if (!service.locked()) { // If able to get lock, lock it
+        service.lock();
+        if (service.isEnabled() && isNotDestroyed(service)) {
+            setDisable(service);
+            ret = ACTION_SUCCESS;
+        }
+        service.unlock();
+    } else { // If unable to get lock
         uint8_t flag = Service::FLAG_DISABLE;
-        service.getFlagQueue()->add(service.getFlagQueue(), &flag);
-        return ACTION_QUEUED;
-    } else if (service.isEnabled() && isNotDestroyed(service)) {
-        setDisable(service);
-        return ACTION_SUCCESS;
-    } else {
-        return ACTION_NONE;
+        if (service.getFlagQueue()->add(service.getFlagQueue(), &flag) >= 0)
+            ret = ACTION_QUEUED;
     }
+    return ret;
 }
 
 
 SchedulerAction Scheduler::enable(Service &service)
 {
-    if (service.locked()) { // Queue it
+    SchedulerAction ret = ACTION_NONE;
+    if (!service.locked()) { // If able to get lock, lock it
+        service.lock();
+        if (!service.isEnabled() && isNotDestroyed(service)) {
+            setEnable(service);
+            ret = ACTION_SUCCESS;
+        }
+        service.unlock();
+    } else { // If unable to get lock
         uint8_t flag = Service::FLAG_ENABLE;
-        service.getFlagQueue()->add(service.getFlagQueue(), &flag);
-        return ACTION_QUEUED;
-    } else if (!service.isEnabled() && isNotDestroyed(service)) {
-        setEnable(service);
-        return ACTION_SUCCESS;
-    } else {
-        return ACTION_NONE;
+        if (service.getFlagQueue()->add(service.getFlagQueue(), &flag) >= 0)
+            ret = ACTION_QUEUED;
     }
+    return ret;
 }
 
 
 SchedulerAction Scheduler::destroy(Service &service)
 {
-    if (!service.locked() && isNotDestroyed(service) && !_locked) {
-        _locked = true;
-        setDestroy(service);
-        _locked = false;
-        return ACTION_SUCCESS;
-    } else {
-        uint8_t flag = Service::FLAG_DESTROY;
-        service.getFlagQueue()->add(service.getFlagQueue(), &flag);
-        return ACTION_QUEUED;
+    bool s_lock = false, l_lock = false;
+    SchedulerAction ret = ACTION_QUEUED;
+
+    if (!service.locked()) {
+        service.lock();
+        s_lock = true;
     }
+
+    if (!_locked) {
+        _locked = true;
+        l_lock = true;
+    }
+    // Both have been locked successfully
+    if (s_lock && l_lock && isNotDestroyed(service)) {
+        setDestroy(service);
+        ret = ACTION_SUCCESS;
+    } else if (isNotDestroyed(service)) {
+        uint8_t flag = Service::FLAG_DESTROY;
+        ret = service.getFlagQueue()->add(service.getFlagQueue(), &flag) >= 0 ?
+            ACTION_QUEUED : ACTION_NONE;
+    }
+
+    // now unlock everything
+    if (s_lock)
+        service.unlock();
+
+    if (l_lock)
+        _locked = false;
+
+    return ret;
 }
 
 uint8_t Scheduler::getID(Service &service)
@@ -110,14 +156,17 @@ uint8_t Scheduler::getID(Service &service)
 
 uint8_t Scheduler::countServices(bool enabledOnly)
 {
-    if (_locked)
+    if (!_locked)
+        _locked = true;
+    else
         return 0;
-    _locked = true;
+
     uint8_t count=0;
     for (Service *curr = _head; curr != NULL; curr = curr->getNext())
     {
         count += enabledOnly ? curr->isEnabled() : 1;
     }
+
     _locked = false; // restore
     return count;
 }
@@ -132,16 +181,10 @@ int Scheduler::run()
         _active->lock(); // Lock changes to it!
         uint32_t start = getCurrTS();
 
-        if (_active->isEnabled() &&
-            (_active->getPeriod() == SERVICE_CONSTANTLY || start - _active->getScheduledTS() >= _active->getPeriod()) &&
-            (_active->getIterations() == RUNTIME_FOREVER || _active->getIterations() > 0))
+        if (_active->needsServicing(start))
         {
-            if (_active->getPeriod() != SERVICE_CONSTANTLY)
-                _active->setScheduledTS(_active->getScheduledTS() + _active->getPeriod());
-            else
-                _active->setScheduledTS(getCurrTS());
-
-            _active->setActualTS(start);
+            bool force = _active->forceSet(); // Store whether it was a forced iteraiton
+            _active->willService(start);
 
 #ifdef _SERVICE_EXCEPTION_HANDLING
             int ret = setjmp(_env);
@@ -154,12 +197,7 @@ int Scheduler::run()
             _active->service();
 #endif
 
-            if (_active->getIterations() > 0)
-            {
-                _active->decIterations();
-                if (_active->getIterations() == 0)
-                    _active->disable();
-            }
+            _active->wasServiced(force);
 
 #ifdef _SERVICE_STATISTICS
             uint32_t runTime = getCurrTS() - start;
@@ -183,7 +221,7 @@ int Scheduler::run()
 }
 
 /************ PROTECTED ***************/
-
+// THESE SHOULD ONLY BE CALLED WHEN SERVICE IS LOCKED BY CALLER
 void Scheduler::setDisable(Service &service)
 {
     service.onDisable();
@@ -207,17 +245,18 @@ void Scheduler::setDestroy(Service &service)
 
 
 
-//only call if safe to do so
+//only call when service is locked by caller!
 void Scheduler::processFlags(Service &node)
 {
-    if (_locked)
+    if (!_locked)
+        _locked = true;
+    else
         return;
-    _locked = true;
     // Process flags
     RingBuf *queue = _active->getFlagQueue();
 
     uint8_t flag;
-    while(queue->pull(queue, &flag)) // Empty Queue
+    while(node.locked() && queue->pull(queue, &flag)) // Empty Queue
     {
         switch (flag)
         {

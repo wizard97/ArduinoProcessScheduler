@@ -1,8 +1,12 @@
-#ifndef SCHEDULER_SERVICE_EXTRA_H
-#define SCHEDULER_SERVICE_EXTRA_H
+#ifndef SCHEDULER_SERVICE_INCLUDES_H
+#define SCHEDULER_SERVICE_INCLUDES_H
+
+#include "Arduino.h"
+
+class Scheduler;
+class Service;
 
 #define _SERVICE_STATISTICS
-
 #define _SERVICE_EXCEPTION_HANDLING
 
 typedef enum SchedulerAction

@@ -12,6 +12,7 @@
         this->_scheduledTS = _scheduler.getCurrTS();
         this->_actualTS = _scheduler.getCurrTS();
         this->_locked = false;
+        this->_force = false;
         _flags = RingBuf_new(sizeof(uint8_t), MAX_QUEUED_FLAGS);
     }
 
@@ -44,6 +45,13 @@
         return _scheduler.add(*this);
     }
 
+    bool Service::needsServicing(uint32_t start)
+    {
+        return (isEnabled() && (_force ||
+            ((getPeriod() == SERVICE_CONSTANTLY || start - getScheduledTS() >= getPeriod()) &&
+            (getIterations() == RUNTIME_FOREVER || getIterations() > 0))));
+    }
+
     /* GETTERS */
     int Service::getID()
     {
@@ -62,6 +70,32 @@
     void Service::onEnable() { return; }
     void Service::onDisable() { return; }
 
+    /*********** PRIVATE *************/
+    void Service::willService(uint32_t ts)
+    {
+        if (!_force)
+        {
+            if (getPeriod() != SERVICE_CONSTANTLY)
+                setScheduledTS(getScheduledTS() + getPeriod());
+            else
+                setScheduledTS(ts);
+        } else {
+            _force = false;
+        }
+
+        setActualTS(ts);
+    }
+
+
+    void Service::wasServiced(bool wasForced)
+    {
+        if (!wasForced && getIterations() > 0) { //Was an iteration
+            decIterations();
+
+            if (getIterations() == 0)
+                disable();
+        }
+    }
 
 
 #ifdef _SERVICE_STATISTICS

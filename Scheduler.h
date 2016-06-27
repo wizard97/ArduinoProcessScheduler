@@ -1,8 +1,7 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
-#include "Arduino.h"
-#include "Extra.h"
+#include "Includes.h"
 #include "setjmp.h"
 
 class Service;
