@@ -130,7 +130,7 @@ int Scheduler::run()
     for (_active = _head; _active != NULL ; _active = _active->getNext(), count++)
     {
         _active->lock(); // Lock changes to it!
-        uint32_t start = getCurrTS(), runTime;
+        uint32_t start = getCurrTS();
 
         if (_active->isEnabled() &&
             (_active->getPeriod() == SERVICE_CONSTANTLY || start - _active->getScheduledTS() >= _active->getPeriod()) &&
@@ -142,9 +142,17 @@ int Scheduler::run()
                 _active->setScheduledTS(getCurrTS());
 
             _active->setActualTS(start);
-            _active->service();
 
-            runTime = getCurrTS() - start;
+#ifdef _SERVICE_EXCEPTION_HANDLING
+            int ret = setjmp(_env);
+            if (!ret) {
+                _active->service();
+            } else {
+                eDispatcher(ret);
+            }
+#else
+            _active->service();
+#endif
 
             if (_active->getIterations() > 0)
             {
@@ -154,6 +162,7 @@ int Scheduler::run()
             }
 
 #ifdef _SERVICE_STATISTICS
+            uint32_t runTime = getCurrTS() - start;
             // Make sure no overflow happens
             if (_active->statsWillOverflow(1, runTime))
                 handleHistOverFlow(HISTORY_DIV_FACTOR);
@@ -278,6 +287,29 @@ void Scheduler::handleHistOverFlow(uint8_t div)
 }
 
 #endif
+
+
+#ifdef _SERVICE_EXCEPTION_HANDLING
+    void Scheduler::raiseException(int e)
+    {
+        longjmp(_env, e);
+    }
+
+
+    bool Scheduler::eDispatcher(int e)
+    {
+        if (e != 0 && _active)
+        {
+            if (!_active->handleException(e))
+                handleException(*_active, e);
+            return true;
+        }
+        return false;
+
+    }
+#endif
+
+
 
 bool Scheduler::appendNode(Service &node)
 {

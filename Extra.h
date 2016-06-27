@@ -3,6 +3,8 @@
 
 #define _SERVICE_STATISTICS
 
+#define _SERVICE_EXCEPTION_HANDLING
+
 typedef enum SchedulerAction
 {
     ACTION_NONE,

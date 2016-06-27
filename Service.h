@@ -112,6 +112,15 @@ private:
     uint8_t _histLoadPercent;
 
 #endif
+
+
+#ifdef _SERVICE_EXCEPTION_HANDLING
+
+protected:
+    // By default do not handle
+    virtual bool handleException(int e) { return false; };
+    virtual void raiseException(int e) { _scheduler.raiseException(e); }
+#endif
 };
 
 

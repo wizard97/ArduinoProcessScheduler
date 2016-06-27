@@ -3,6 +3,7 @@
 
 #include "Arduino.h"
 #include "Extra.h"
+#include "setjmp.h"
 
 class Service;
 
@@ -51,6 +52,16 @@ public:
 private:
     void handleHistOverFlow(uint8_t div);
 
+#endif
+
+
+#ifdef _SERVICE_EXCEPTION_HANDLING
+public:
+    void raiseException(int e);
+    virtual void handleException(Service &service, int e) { };
+protected:
+    bool eDispatcher(int e);
+    jmp_buf _env;
 #endif
 
 };
