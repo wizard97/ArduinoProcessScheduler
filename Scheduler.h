@@ -32,7 +32,7 @@ protected:
     void setEnable(Service &service);
     void setDestroy(Service &service);
 
-    void processFlags(Service &node);
+    void processFlags(Service &service, bool callerLock = false);
     // Linked list methods
     bool appendNode(Service &node); // true on success
     bool removeNode(Service &node); // true on success

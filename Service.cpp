@@ -3,7 +3,7 @@
 
     /*********** PUBLIC *************/
     Service::Service(Scheduler &scheduler, unsigned int period,
-            int iterations, bool enabled)
+            int iterations, bool enabled, int16_t overSchedThresh)
     : _scheduler(scheduler)
     {
         this->_period = period;
@@ -13,6 +13,8 @@
         this->_actualTS = _scheduler.getCurrTS();
         this->_locked = false;
         this->_force = false;
+        this->_overSchedThresh = overSchedThresh;
+        this->_pBehind = overSchedThresh;
         _flags = RingBuf_new(sizeof(uint8_t), MAX_QUEUED_FLAGS);
     }
 
@@ -69,8 +71,15 @@
     //called on enable/disable
     void Service::onEnable() { return; }
     void Service::onDisable() { return; }
+    void Service::overScheduledHandler(uint32_t behind) { resetSchedulerWarning(); }
 
     /*********** PRIVATE *************/
+    bool Service::isPBehind(uint32_t curr)
+    {
+        return (curr - getScheduledTS()) >= getPeriod();
+    }
+
+
     void Service::willService(uint32_t ts)
     {
         if (!_force)
@@ -87,14 +96,15 @@
     }
 
 
-    void Service::wasServiced(bool wasForced)
+    bool Service::wasServiced(bool wasForced)
     {
         if (!wasForced && getIterations() > 0) { //Was an iteration
             decIterations();
 
             if (getIterations() == 0)
-                disable();
+                return true;
         }
+        return false;
     }
 
 

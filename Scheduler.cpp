@@ -26,11 +26,10 @@ SchedulerAction Scheduler::add(Service &service)
             // Empty flag queue
             uint8_t tmp;
             while (service.getFlagQueue()->pull(service.getFlagQueue(), &tmp));
-
-            service.setup();
             service.setID(++_lastID);
             appendNode(service);
-            // Empty out flag buffer
+            service.setup();
+            processFlags(service, true);
 
 #ifdef _SERVICE_STATISTICS
             service.setHistRuntime(0);
@@ -179,12 +178,22 @@ int Scheduler::run()
     for (_active = _head; _active != NULL ; _active = _active->getNext(), count++)
     {
         _active->lock(); // Lock changes to it!
+        processFlags(*_active);
         uint32_t start = getCurrTS();
 
         if (_active->needsServicing(start))
         {
             bool force = _active->forceSet(); // Store whether it was a forced iteraiton
             _active->willService(start);
+
+            // Handle scheduler warning
+            if (_active->getOverSchedThresh() != OVERSCHEDULED_NO_WARNING && _active->isPBehind(start)) {
+                _active->incrPBehind();
+                if (_active->getCurrPBehind() >= _active->getOverSchedThresh())
+                    _active->overScheduledHandler(start - _active->getScheduledTS());
+            } else {
+                _active->resetSchedulerWarning();
+            }
 
 #ifdef _SERVICE_EXCEPTION_HANDLING
             int ret = setjmp(_env);
@@ -197,7 +206,6 @@ int Scheduler::run()
             _active->service();
 #endif
 
-            _active->wasServiced(force);
 
 #ifdef _SERVICE_STATISTICS
             uint32_t runTime = getCurrTS() - start;
@@ -209,14 +217,19 @@ int Scheduler::run()
             _active->setHistRuntime(_active->getHistRunTime()+runTime);
 
 #endif
-
+            // Is it time to disable?
+            if (_active->wasServiced(force)) {
+                processFlags(*_active);
+                setDisable(*_active);
+            }
         }
         processFlags(*_active);
+
         _active->unlock();
     }
 
     _active = NULL;
-
+    delay(0); // For future ESP8266 support
     return count;
 }
 
@@ -245,35 +258,36 @@ void Scheduler::setDestroy(Service &service)
 
 
 
-//only call when service is locked by caller!
-void Scheduler::processFlags(Service &node)
+//only call when service is locked by caller! callerLock = true is linked list is locked by caller
+void Scheduler::processFlags(Service &service, bool callerLock)
 {
     if (!_locked)
         _locked = true;
-    else
+    else if (!callerLock)
         return;
     // Process flags
-    RingBuf *queue = _active->getFlagQueue();
+    RingBuf *queue = service.getFlagQueue();
 
     uint8_t flag;
-    while(node.locked() && queue->pull(queue, &flag)) // Empty Queue
+    while(!queue->isEmpty(queue)) // Empty Queue
     {
+        queue->pull(queue, &flag);
         switch (flag)
         {
             case Service::FLAG_ENABLE:
-                if (!_active->isEnabled() && isNotDestroyed(*_active))
-                    setEnable(*_active);
+                if (!service.isEnabled() && isNotDestroyed(service))
+                    setEnable(service);
                 break;
 
             case Service::FLAG_DISABLE:
-                if (_active->isEnabled() && isNotDestroyed(*_active))
-                    setDisable(*_active);
+                if (service.isEnabled() && isNotDestroyed(service))
+                    setDisable(service);
                 break;
 
             case Service::FLAG_DESTROY:
-                if (isNotDestroyed(*_active))
+                if (isNotDestroyed(service))
                 {
-                    setDestroy(*_active);
+                    setDestroy(service);
                     while(queue->pull(queue, &flag)); // Empty Queue
                 }
                 break;
@@ -384,6 +398,7 @@ bool Scheduler::removeNode(Service &node)
 bool Scheduler::findNode(Service &node)
 {
     Service *prev = _head;
-    for (; prev != NULL && prev->getNext() != &node; prev = prev->getNext());
+    for (; prev != NULL && prev != &node; prev = prev->getNext());
+
     return prev;
 }

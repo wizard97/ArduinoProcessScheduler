@@ -15,8 +15,9 @@
 #define RUNTIME_FOREVER -1
 #define RUNTIME_ONCE 1
 
-#define MAX_QUEUED_FLAGS 5
+#define MAX_QUEUED_FLAGS 10
 
+#define OVERSCHEDULED_NO_WARNING 0
 class Scheduler;
 
 
@@ -25,7 +26,8 @@ class Service
     friend class Scheduler;
 public:
     Service(Scheduler &manager, unsigned int period,
-            int iterations=RUNTIME_FOREVER, bool enabled=true);
+            int iterations=RUNTIME_FOREVER, bool enabled=true,
+            int16_t overSchedThresh = OVERSCHEDULED_NO_WARNING);
     ~Service();
     int getID();
     inline Scheduler &scheduler() { return _scheduler; }
@@ -44,6 +46,9 @@ public:
     inline unsigned int getPeriod() { return _period; }
 
     inline void force() { _force = true; }
+    inline void resetSchedulerWarning() { _pBehind = 0; }
+    inline uint16_t getOverSchedThresh() { return _overSchedThresh; }
+    inline uint16_t getCurrPBehind() { return _pBehind; }
 
 protected:
     inline uint32_t getStartDelay() { return _actualTS - _scheduledTS; }
@@ -55,6 +60,8 @@ protected:
     virtual void onDisable();
     // service routine
     virtual void service() = 0;
+    // Overscheduled warning
+    virtual void overScheduledHandler(uint32_t behind);
 
 private:
     enum ServiceFlags
@@ -65,8 +72,9 @@ private:
     };
 
     void willService(uint32_t ts);
-    void wasServiced(bool wasForced);
+    bool wasServiced(bool wasForced);
     bool needsServicing(uint32_t start);
+    bool isPBehind(uint32_t curr);
     inline bool hasNext() { return _next; }
     // GETTERS
     inline bool forceSet() { return _force; }
@@ -83,6 +91,8 @@ private:
     inline void unlock() { _locked = false; }
     inline bool locked() { return _locked; }
 
+    inline void incrPBehind() { _pBehind++; }
+
     Scheduler &_scheduler;
     bool _enabled, _force;
     int _iterations;
@@ -93,9 +103,11 @@ private:
     // Flag queue
     RingBuf* _flags;
     // Linked List
-    Service *_next;
+    Service *volatile _next;
     //Locks changes
     volatile bool _locked;
+    // Tracks overscheduled
+    uint16_t _overSchedThresh, _pBehind;
 
 
 
