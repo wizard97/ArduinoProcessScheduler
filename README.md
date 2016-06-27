@@ -12,6 +12,9 @@ An Arduino Object Oriented Cooperative Service Scheduler to Replace Them All
 ## Basic Usage
 There are two classes to worry about: `Scheduler` and `Service`.
 
+### Class `Scheduler`:
+A `Scheduler` oversees and maanges `Services`. There should only be one `Scheduler` in your project. Inside of `void loop()`, the scheduler's `run()` method should be repeatedly called.
+
 ### Class `Service`:
 A service can be thought of as job or a task that needs to be run at certain times. Each Service had be scheduled to run Periodically
 Constantly, or Periodically/Constantly with a set number of run iterations.
@@ -21,7 +24,7 @@ Each project will have multiple services, here are some examples of `Services`:
   - A Service to run a basic webserver
   - A Service to update a display
   
-`Service` is a base class that should extended to handle your particular Service (such as the examples mentioned above). The scheduler's will call the following virtual function as an entry point when it is time for you service to run:
+`Service` is a base class that should be extended to handle your particular Service (such as the examples mentioned above). The scheduler's will call the following virtual function as an entry point when it is time for you service to run:
 ```
     virtual void service();
 ```
@@ -55,9 +58,6 @@ This method is called only once when a enabled task is being disabled with `disa
 #### `overScheduledHandler(uint32_t behind)`
 This method is called if the scheduler can not meet the current set period for the Service and is falling behind. The scheduler will pass in variable `behind` containing how many milliseconds (or microseconds) behind the scheduler is with this task. Inside this method might be a good time increase the period between when this task is run, then call `resetSchedulerWarning()` to clear the warning.
 
-
-### Class `Scheduler`:
-A `Scheduler` oversees and maanges `Services`. There should only be one `Scheduler` in your project. Inside of `void loop()`, the scheduler's `run()` method should be repeatedly called.
 
 ## API
 ### `Scheduler` Methods:
