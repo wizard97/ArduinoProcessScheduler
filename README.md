@@ -70,24 +70,81 @@ Scheduler()
 ```
 Create a Scheduler object.
 
-**Returns:** Scheduler object
+**Returns:** `Scheduler`
 ___
+
+#### run()
+```
+run()
+```
+This method runs one pass through the scheduler. It is the heart of the scheaduler, this method should be called repeatedly inside of `void loop()`
+
+**Returns:** `void`
+___
+
 
 #### getID()
 ```
-getID(Service &service))
+getID(Service &service)
 ```
 Get the unique id for the service. Same as `service.getID()`.
 
-**Returns:** uint8_t
+**Returns:** `uint8_t`
 ___
+
+#### isRunningService()
+```
+isRunningService(Service &service)
+```
+Determine if the scheduler is in the middle of running this service. Same as calling `service.isRunningService()`
+
+**Returns:** `bool`
+___
+
+#### isEnabled()
+```
+isEnabled(Service &service)
+```
+Determines if this service is enabled. Same as calling `service.isEnabled()`
+
+**Returns:** `bool`
+___
+
+#### getCurrService()
+```
+getCurrService()
+```
+Get pointer to the current service being run by the scheduler. Return NULL if no service being currently run.
+
+**Returns:** `Service*`
+___
+
+#### countServices()
+```
+countServices(bool enabledOnly = true)
+```
+Get number of servies in the scheduler's chain. If enabledOnly is true, only the enabled Services will be counted.
+
+**Returns:** `uint8_t`
+___
+
+#### getCurrTS()
+```
+getCurrTS()
+```
+Returns the current internal timestamp. Either will be the same as `millis()` or `micros()`
+
+**Returns:** `uint32_t`
+___
+
+
 #### add()
 ```
 add (Service &service))
 ```
 Add the service to the scheduler, same as calling `service.add()`. Note, this will trigger the service's `setup()` method to fire. This method can only fail inside an interrupt routine, particularly when an interrupt interrupts any call to either `add()` or `remove()`. It will also fail if the service is already added.
 
-**Returns:** type SchedulerAction, `ACTION_NONE` on failure, `ACTION_SUCCESS` on success.
+**Returns:** type `SchedulerAction`, `ACTION_NONE` on failure, `ACTION_SUCCESS` on success.
 ___
 
 #### destroy()
@@ -96,7 +153,7 @@ destroy (Service &service))
 ```
 Remove the service from the scheduler. Same as calling `service.destroy()`. Note, this will trigger the service's `cleanup()` method to fire. If the service is not disabled, it will first call `disable()`. This method can only fail inside an interrupt routine, particularly when an interrupt interrupts any call to either `add()` or `remove()`. It will first try and QUEUE the request for later, before failing. It will also fail if the service is already destroyed. 
 
-**Returns:** type SchedulerAction, `ACTION_NONE` on failure, `ACTION_QUEUED` on Queuing it, `ACTION_SUCCESS` on success.
+**Returns:** type `SchedulerAction`, `ACTION_NONE` on failure, `ACTION_QUEUED` on Queuing it, `ACTION_SUCCESS` on success.
 ___
 
 #### enable()
@@ -105,7 +162,7 @@ enable (Service &service))
 ```
 Enable a service, same as calling `service.enable()`. Note, this will trigger the service's `onEnable()` method to fire. This method call will always succeed if it was not called on itself from a method inside of this service. If it was, the scheduler will queue the request. Also, the request will fail if the service is already enabled or is destroyed.
 
-**Returns:** type SchedulerAction, `ACTION_NONE` on failure, `ACTION_QUEUED` on Queuing it, `ACTION_SUCCESS` on success.
+**Returns:** type `SchedulerAction`, `ACTION_NONE` on failure, `ACTION_QUEUED` on Queuing it, `ACTION_SUCCESS` on success.
 ___
 
 #### disable()
@@ -114,5 +171,5 @@ disable (Service &service))
 ```
 Disable a service, same as calling `service.disable()`. Note, this will trigger the service's `onDisable()` method to fire. This method call will always succeed if it was not called on itself from a method inside of this service. If it was, the scheduler will queue the request. Also, the request will fail if the service is already enabled or is destroyed.
 
-**Returns:** type SchedulerAction, `ACTION_NONE` on failure, `ACTION_QUEUED` on Queuing it, `ACTION_SUCCESS` on success.
+**Returns:** type `SchedulerAction`, `ACTION_NONE` on failure, `ACTION_QUEUED` on Queuing it, `ACTION_SUCCESS` on success.
 ___
