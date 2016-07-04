@@ -11,63 +11,33 @@
         this->_enabled = enabled;
         this->_scheduledTS = _scheduler.getCurrTS();
         this->_actualTS = _scheduler.getCurrTS();
-        this->_locked = false;
         this->_force = false;
         this->_overSchedThresh = overSchedThresh;
         this->_pBehind = overSchedThresh;
-        _flags = RingBuf_new(sizeof(uint8_t), MAX_QUEUED_FLAGS);
-    }
-
-    Service::~Service()
-    {
-        RingBuf_delete(_flags);
     }
 
 
 
-    SchedulerAction Service::disable()
+    bool Service::disable()
     {
         return _scheduler.disable(*this);
     }
 
 
-    SchedulerAction Service::enable()
+    bool Service::enable()
     {
         return _scheduler.enable(*this);
     }
 
 
-    SchedulerAction Service::destroy()
+    bool Service::destroy()
     {
         return _scheduler.destroy(*this);
     }
 
-    SchedulerAction Service::add()
+    bool Service::add()
     {
         return _scheduler.add(*this);
-    }
-
-    bool Service::getLock()
-    {
-        ATOMIC_START
-        {
-            if (!_locked) {
-                _locked = true;
-                return true;
-            }
-        }
-        ATOMIC_END
-        return false;
-    }
-
-    bool Service::unlock()
-    {
-        ATOMIC_START
-        {
-            _locked = false;
-        }
-        ATOMIC_END
-        return true;
     }
 
 

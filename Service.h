@@ -28,13 +28,13 @@ public:
     Service(Scheduler &manager, unsigned int period,
             int iterations=RUNTIME_FOREVER, bool enabled=true,
             int16_t overSchedThresh = OVERSCHEDULED_NO_WARNING);
-    ~Service();
+
     int getID();
     inline Scheduler &scheduler() { return _scheduler; }
-    SchedulerAction add();
-    SchedulerAction disable();
-    SchedulerAction enable();
-    SchedulerAction destroy();
+    bool add();
+    bool disable();
+    bool enable();
+    bool destroy();
 
     inline int32_t timeToNextRun() { return (_scheduledTS + _period) - _scheduler.getCurrTS(); };
     inline uint32_t getScheduledTS() { return _scheduledTS; }; // The ts the most recent iteration should of started
@@ -79,7 +79,6 @@ private:
     // GETTERS
     inline bool forceSet() { return _force; }
     inline Service *getNext() { return _next; }
-    inline RingBuf *getFlagQueue() { return _flags; }
     // SETTERS
     inline void setNext(Service *next) { this->_next = next; }
     inline void setID(uint8_t sid) { this->_sid = sid; }
@@ -87,11 +86,10 @@ private:
     inline void setScheduledTS(uint32_t ts) { _scheduledTS = ts; }
     inline void setActualTS(uint32_t ts) { _actualTS = ts; }
 
-    bool getLock();
-    bool unlock();
-    inline bool locked() { return _locked; }
-
     inline void incrPBehind() { _pBehind++; }
+
+    inline void setDisabled() { _enabled = false; }
+    inline void setEnabled() { _enabled = true; }
 
     Scheduler &_scheduler;
     bool _enabled, _force;
@@ -99,13 +97,9 @@ private:
     unsigned int _period;
     uint8_t _sid;
     uint32_t _scheduledTS, _actualTS;
-
-    // Flag queue
-    RingBuf* _flags;
     // Linked List
     Service *volatile _next;
-    //Locks changes
-    volatile bool _locked;
+
     // Tracks overscheduled
     uint16_t _overSchedThresh, _pBehind;
 

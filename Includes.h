@@ -9,13 +9,6 @@ class Service;
 #define _SERVICE_STATISTICS
 #define _SERVICE_EXCEPTION_HANDLING
 
-typedef enum SchedulerAction
-{
-    ACTION_NONE,
-    ACTION_SUCCESS,
-    ACTION_QUEUED,
-} SchedulerAction;
-
 #if defined(ARDUINO_ARCH_AVR)
     #include <util/atomic.h>
     #define ATOMIC_START ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
