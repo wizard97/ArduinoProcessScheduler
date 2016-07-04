@@ -38,6 +38,10 @@ protected:
     bool removeNode(Service &node); // true on success
     bool findNode(Service &node); // True if node exists in list
 
+    // Atomicity functions
+    bool getLock();
+    bool unlock();
+
     Service *volatile _head;
     Service *_active;
     uint8_t _lastID;

@@ -87,8 +87,8 @@ private:
     inline void setScheduledTS(uint32_t ts) { _scheduledTS = ts; }
     inline void setActualTS(uint32_t ts) { _actualTS = ts; }
 
-    inline void lock() { _locked = true; }
-    inline void unlock() { _locked = false; }
+    bool getLock();
+    bool unlock();
     inline bool locked() { return _locked; }
 
     inline void incrPBehind() { _pBehind++; }

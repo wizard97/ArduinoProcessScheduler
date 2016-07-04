@@ -10,15 +10,11 @@ Scheduler::Scheduler()
 
 SchedulerAction Scheduler::add(Service &service)
 {
-    // Lock changes to linked list
-    if (!_locked)
-        _locked = true;
-    else
-        return ACTION_NONE;
+    bool l_lock = getLock();
+    bool s_lock = service.getLock();
+    SchedulerAction ret = ACTION_NONE;
 
-    // Lock changes to service
-    if (!service.locked()) {
-        service.lock();
+    if (l_lock && s_lock) {
 
         // Make sure it is not added twice!
         if (!findNode(service) && !isRunningService(service))
@@ -37,16 +33,43 @@ SchedulerAction Scheduler::add(Service &service)
             service.setHistLoadPercent(0);
 #endif
 
-            _locked = false;
-            service.unlock();
-            return ACTION_SUCCESS;
+            ret = ACTION_SUCCESS;
         }
 
     }
 
-    _locked = false;
-    return ACTION_NONE;
+    if (l_lock)
+        unlock();
 
+    if (s_lock)
+        service.unlock();
+
+    return ret;
+}
+
+bool Scheduler::getLock()
+{
+    ATOMIC_START
+    {
+        if (!_locked) {
+            _locked = true;
+            return true;
+        }
+    }
+    ATOMIC_END
+
+    return false;
+}
+
+bool Scheduler::unlock()
+{
+    ATOMIC_START
+    {
+        _locked = false;
+    }
+    ATOMIC_END
+
+    return true;
 }
 
 
@@ -79,18 +102,22 @@ bool Scheduler::isEnabled(Service &service)
 SchedulerAction Scheduler::disable(Service &service)
 {
     SchedulerAction ret = ACTION_NONE;
-    if (!service.locked()) { // If able to get lock, lock it
-        service.lock();
+    bool s_lock = service.getLock();
+
+    if (s_lock) { // If able to get lock
         if (service.isEnabled() && isNotDestroyed(service)) {
             setDisable(service);
             ret = ACTION_SUCCESS;
         }
-        service.unlock();
     } else { // If unable to get lock
         uint8_t flag = Service::FLAG_DISABLE;
         if (service.getFlagQueue()->add(service.getFlagQueue(), &flag) >= 0)
             ret = ACTION_QUEUED;
     }
+
+    if (s_lock)
+        service.unlock();
+
     return ret;
 }
 
@@ -98,36 +125,34 @@ SchedulerAction Scheduler::disable(Service &service)
 SchedulerAction Scheduler::enable(Service &service)
 {
     SchedulerAction ret = ACTION_NONE;
-    if (!service.locked()) { // If able to get lock, lock it
-        service.lock();
-        if (!service.isEnabled() && isNotDestroyed(service)) {
+    bool s_lock = service.getLock();
+
+    if (!service.isEnabled() && isNotDestroyed(service))
+    {
+        if (s_lock) { // If able to get lock
             setEnable(service);
             ret = ACTION_SUCCESS;
+        } else { // If unable to get lock
+            uint8_t flag = Service::FLAG_ENABLE;
+            if (service.getFlagQueue()->add(service.getFlagQueue(), &flag) >= 0)
+                ret = ACTION_QUEUED;
         }
-        service.unlock();
-    } else { // If unable to get lock
-        uint8_t flag = Service::FLAG_ENABLE;
-        if (service.getFlagQueue()->add(service.getFlagQueue(), &flag) >= 0)
-            ret = ACTION_QUEUED;
     }
+
+    if (s_lock)
+        service.unlock();
+
     return ret;
 }
 
 
 SchedulerAction Scheduler::destroy(Service &service)
 {
-    bool s_lock = false, l_lock = false;
+    bool s_lock = service.getLock();
+    bool l_lock = getLock();
     SchedulerAction ret = ACTION_QUEUED;
 
-    if (!service.locked()) {
-        service.lock();
-        s_lock = true;
-    }
 
-    if (!_locked) {
-        _locked = true;
-        l_lock = true;
-    }
     // Both have been locked successfully
     if (s_lock && l_lock && isNotDestroyed(service)) {
         setDestroy(service);
@@ -143,7 +168,7 @@ SchedulerAction Scheduler::destroy(Service &service)
         service.unlock();
 
     if (l_lock)
-        _locked = false;
+        unlock();
 
     return ret;
 }
@@ -155,10 +180,6 @@ uint8_t Scheduler::getID(Service &service)
 
 uint8_t Scheduler::countServices(bool enabledOnly)
 {
-    if (!_locked)
-        _locked = true;
-    else
-        return 0;
 
     uint8_t count=0;
     for (Service *curr = _head; curr != NULL; curr = curr->getNext())
@@ -166,7 +187,6 @@ uint8_t Scheduler::countServices(bool enabledOnly)
         count += enabledOnly ? curr->isEnabled() : 1;
     }
 
-    _locked = false; // restore
     return count;
 }
 
@@ -177,7 +197,9 @@ int Scheduler::run()
     int count = 0;
     for (_active = _head; _active != NULL ; _active = _active->getNext(), count++)
     {
-        _active->lock(); // Lock changes to it!
+        if (!_active->getLock()) // This should never fail
+            continue;
+
         processFlags(*_active);
         uint32_t start = getCurrTS();
 
@@ -261,9 +283,9 @@ void Scheduler::setDestroy(Service &service)
 //only call when service is locked by caller! callerLock = true is linked list is locked by caller
 void Scheduler::processFlags(Service &service, bool callerLock)
 {
-    if (!_locked)
-        _locked = true;
-    else if (!callerLock)
+    bool l_lock = getLock();
+    // no callerlock and unable to get ll lock
+    if (!callerLock && !l_lock)
         return;
     // Process flags
     RingBuf *queue = service.getFlagQueue();
@@ -296,7 +318,11 @@ void Scheduler::processFlags(Service &service, bool callerLock)
                 break;
         }
     }
-    _locked = false;
+
+    if (!callerLock)
+        unlock();
+
+    return;
 
 }
 
@@ -304,8 +330,11 @@ void Scheduler::processFlags(Service &service, bool callerLock)
 
 void Scheduler::updateStats()
 {
-    if (_locked)
+    bool l_lock = getLock();
+
+    if (!l_lock)
         return;
+
     uint8_t count = countServices(false);
     HISTORY_TIME_TYPE sTime[count];
 
@@ -331,8 +360,11 @@ void Scheduler::updateStats()
         }
     }
 
+    unlock();
+    return;
 }
 
+// Make sure it is locked
 void Scheduler::handleHistOverFlow(uint8_t div)
 {
     for(Service *n = _head; n != NULL; n = n->getNext())

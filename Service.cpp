@@ -47,6 +47,30 @@
         return _scheduler.add(*this);
     }
 
+    bool Service::getLock()
+    {
+        ATOMIC_START
+        {
+            if (!_locked) {
+                _locked = true;
+                return true;
+            }
+        }
+        ATOMIC_END
+        return false;
+    }
+
+    bool Service::unlock()
+    {
+        ATOMIC_START
+        {
+            _locked = false;
+        }
+        ATOMIC_END
+        return true;
+    }
+
+
     bool Service::needsServicing(uint32_t start)
     {
         return (isEnabled() && (_force ||
@@ -96,6 +120,7 @@
     }
 
 
+    // Return true if last if should disable
     bool Service::wasServiced(bool wasForced)
     {
         if (!wasForced && getIterations() > 0) { //Was an iteration
