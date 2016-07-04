@@ -12,13 +12,8 @@ Scheduler::Scheduler()
 
 Scheduler::~Scheduler()
 {
+    processQueue();
     RingBuf_delete(_queue);
-}
-
-bool Scheduler::add(Service &service)
-{
-    QueableOperation op(&service, QueableOperation::ADD_SERVICE);
-    return op.queue(_queue);
 }
 
 uint32_t Scheduler::getCurrTS()
@@ -69,10 +64,21 @@ bool Scheduler::enable(Service &service)
     return op.queue(_queue);
 }
 
+bool Scheduler::add(Service &service)
+{
+    QueableOperation op(&service, QueableOperation::ADD_SERVICE);
+    return op.queue(_queue);
+}
 
 bool Scheduler::destroy(Service &service)
 {
     QueableOperation op(&service, QueableOperation::DESTROY_SERVICE);
+    return op.queue(_queue);
+}
+
+bool Scheduler::halt()
+{
+    QueableOperation op(QueableOperation::HALT);
     return op.queue(_queue);
 }
 
@@ -200,6 +206,13 @@ void Scheduler::procAdd(Service &service)
     }
 }
 
+void Scheduler::procHalt()
+{
+    for (Service *serv = _head; serv != NULL; serv = serv->getNext())
+        procDestroy(*serv);
+
+    HALT_PROCESSOR();
+}
 
 
 //Only call when there is guarantee this is not running in another call frame
@@ -225,6 +238,10 @@ void Scheduler::processQueue()
 
             case QueableOperation::DESTROY_SERVICE:
                 procDestroy(*op.getService());
+                break;
+
+            case QueableOperation::HALT:
+                procHalt();
                 break;
 
 #ifdef _SERVICE_STATISTICS

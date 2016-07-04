@@ -14,6 +14,10 @@ class Service;
     #define ATOMIC_START ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     #define ATOMIC_END }
 
+    #include <avr/sleep.h>
+    #define HALT_PROCESSOR() \
+            do { noInterrupts(); sleep_enable(); sleep_cpu(); } while(0)
+
 
 #elif defined(ARDUINO_ARCH_ESP8266)
     #ifndef __STRINGIFY
@@ -30,9 +34,13 @@ class Service;
 
     #define ATOMIC_START do { uint32_t _savedIS = xt_rsil(15) ;
     #define ATOMIC_END xt_wsr_ps(_savedIS) ;} while(0);
+
+    #define HALT_PROCESSOR() \
+            ESP.deepSleep(0)
 #else
     #error “This library only supports AVR and ESP8266 Boards.”
 #endif
+
 
 #ifdef _MICROS_PRECISION
     #define TIMESTAMP() micros()

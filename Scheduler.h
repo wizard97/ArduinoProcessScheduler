@@ -19,6 +19,7 @@ public:
     bool disable(Service &service);
     bool enable(Service &service);
     bool destroy(Service &service);
+    bool halt();
 
     uint8_t getID(Service &service);
     bool isRunningService(Service &service);
@@ -44,6 +45,7 @@ protected:
             DESTROY_SERVICE,
             DISABLE_SERVICE,
             ENABLE_SERVICE,
+            HALT,
 #ifdef _SERVICE_STATISTICS
             UPDATE_STATS,
 #endif
@@ -68,6 +70,7 @@ protected:
     void procEnable(Service &service);
     void procDestroy(Service &service);
     void procAdd(Service &service);
+    void procHalt();
 
     void processQueue();
     // Linked list methods
