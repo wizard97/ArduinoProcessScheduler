@@ -1,8 +1,8 @@
-#include "Service.h"
+#include "Process.h"
 #include "Scheduler.h"
 
     /*********** PUBLIC *************/
-    Service::Service(Scheduler &scheduler, unsigned int period,
+    Process::Process(Scheduler &scheduler, unsigned int period,
             int iterations, bool enabled, int16_t overSchedThresh)
     : _scheduler(scheduler)
     {
@@ -18,30 +18,30 @@
 
 
 
-    bool Service::disable()
+    bool Process::disable()
     {
         return _scheduler.disable(*this);
     }
 
 
-    bool Service::enable()
+    bool Process::enable()
     {
         return _scheduler.enable(*this);
     }
 
 
-    bool Service::destroy()
+    bool Process::destroy()
     {
         return _scheduler.destroy(*this);
     }
 
-    bool Service::add()
+    bool Process::add()
     {
         return _scheduler.add(*this);
     }
 
 
-    bool Service::needsServicing(uint32_t start)
+    bool Process::needsServicing(uint32_t start)
     {
         return (isEnabled() && (_force ||
             ((getPeriod() == SERVICE_CONSTANTLY || start - getScheduledTS() >= getPeriod()) &&
@@ -49,7 +49,7 @@
     }
 
     /* GETTERS */
-    int Service::getID()
+    int Process::getID()
     {
         return _sid;
     }
@@ -60,21 +60,21 @@
     /*********** PROTECTED *************/
 
     // Fired on creation/destroy
-    void Service::setup() { return; }
-    void Service::cleanup() { return; }
+    void Process::setup() { return; }
+    void Process::cleanup() { return; }
     //called on enable/disable
-    void Service::onEnable() { return; }
-    void Service::onDisable() { return; }
-    void Service::overScheduledHandler(uint32_t behind) { resetSchedulerWarning(); }
+    void Process::onEnable() { return; }
+    void Process::onDisable() { return; }
+    void Process::overScheduledHandler(uint32_t behind) { resetSchedulerWarning(); }
 
     /*********** PRIVATE *************/
-    bool Service::isPBehind(uint32_t curr)
+    bool Process::isPBehind(uint32_t curr)
     {
         return (curr - getScheduledTS()) >= getPeriod();
     }
 
 
-    void Service::willService(uint32_t ts)
+    void Process::willService(uint32_t ts)
     {
         if (!_force)
         {
@@ -91,7 +91,7 @@
 
 
     // Return true if last if should disable
-    bool Service::wasServiced(bool wasForced)
+    bool Process::wasServiced(bool wasForced)
     {
         if (!wasForced && getIterations() > 0) { //Was an iteration
             decIterations();
@@ -103,9 +103,9 @@
     }
 
 
-#ifdef _SERVICE_STATISTICS
+#ifdef _PROCESS_STATISTICS
 
-    uint32_t Service::getAvgRunTime()
+    uint32_t Process::getAvgRunTime()
     {
         if (!_histIterations)
             return 0;
@@ -113,13 +113,13 @@
         return _histRunTime / _histIterations;
     }
 
-    bool Service::statsWillOverflow(HISTORY_COUNT_TYPE iter, HISTORY_TIME_TYPE tm)
+    bool Process::statsWillOverflow(HISTORY_COUNT_TYPE iter, HISTORY_TIME_TYPE tm)
     {
         return (_histIterations > _histIterations + iter) || (_histRunTime > _histRunTime + tm);
 
     }
 
-    void Service::divStats(uint8_t div)
+    void Process::divStats(uint8_t div)
     {
         ++_histIterations /= div;
         ++_histRunTime /= div;

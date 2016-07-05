@@ -1,13 +1,13 @@
-#ifndef SCHEDULER_SERVICE_INCLUDES_H
-#define SCHEDULER_SERVICE_INCLUDES_H
+#ifndef SCHEDULER_PROCESS_INCLUDES_H
+#define SCHEDULER_PROCESS_INCLUDES_H
 
 #include "Arduino.h"
 
 class Scheduler;
-class Service;
+class Process;
 
-#define _SERVICE_STATISTICS
-#define _SERVICE_EXCEPTION_HANDLING
+#define _PROCESS_STATISTICS
+#define _PROCESS_EXCEPTION_HANDLING
 
 #if defined(ARDUINO_ARCH_AVR)
     #include <util/atomic.h>
@@ -48,7 +48,7 @@ class Service;
     #define TIMESTAMP() millis()
 #endif
 
-#ifdef _SERVICE_STATISTICS
+#ifdef _PROCESS_STATISTICS
     #define HISTORY_COUNT_TYPE uint32_t
     #define HISTORY_TIME_TYPE uint32_t
 

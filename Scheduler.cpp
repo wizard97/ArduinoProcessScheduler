@@ -1,5 +1,5 @@
 #include "Scheduler.h"
-#include "Service.h"
+#include "Process.h"
 
 
 Scheduler::Scheduler()
@@ -21,19 +21,19 @@ uint32_t Scheduler::getCurrTS()
     return TIMESTAMP();
 }
 
-Service *Scheduler::getCurrService()
+Process *Scheduler::getCurrProcess()
 {
     return _active;
 }
 
-bool Scheduler::isRunningService(Service &service)
+bool Scheduler::isRunningProcess(Process &process)
 {
-    return _active && &service == _active;
+    return _active && &process == _active;
 }
 
-Service *Scheduler::findById(uint8_t id)
+Process *Scheduler::findById(uint8_t id)
 {
-    for (Service *serv = _head; serv != NULL; serv = serv->getNext())
+    for (Process *serv = _head; serv != NULL; serv = serv->getNext())
     {
         if (serv->getID() == id)
             return serv;
@@ -41,38 +41,38 @@ Service *Scheduler::findById(uint8_t id)
     return NULL;
 }
 
-bool Scheduler::isNotDestroyed(Service &service)
+bool Scheduler::isNotDestroyed(Process &process)
 {
-    return findNode(service);
+    return findNode(process);
 }
 
-bool Scheduler::isEnabled(Service &service)
+bool Scheduler::isEnabled(Process &process)
 {
-    return service.isEnabled();
+    return process.isEnabled();
 }
 
-bool Scheduler::disable(Service &service)
+bool Scheduler::disable(Process &process)
 {
-    QueableOperation op(&service, QueableOperation::DISABLE_SERVICE);
+    QueableOperation op(&process, QueableOperation::DISABLE_SERVICE);
     return op.queue(_queue);
 }
 
 
-bool Scheduler::enable(Service &service)
+bool Scheduler::enable(Process &process)
 {
-    QueableOperation op(&service, QueableOperation::ENABLE_SERVICE);
+    QueableOperation op(&process, QueableOperation::ENABLE_SERVICE);
     return op.queue(_queue);
 }
 
-bool Scheduler::add(Service &service)
+bool Scheduler::add(Process &process)
 {
-    QueableOperation op(&service, QueableOperation::ADD_SERVICE);
+    QueableOperation op(&process, QueableOperation::ADD_SERVICE);
     return op.queue(_queue);
 }
 
-bool Scheduler::destroy(Service &service)
+bool Scheduler::destroy(Process &process)
 {
-    QueableOperation op(&service, QueableOperation::DESTROY_SERVICE);
+    QueableOperation op(&process, QueableOperation::DESTROY_SERVICE);
     return op.queue(_queue);
 }
 
@@ -82,16 +82,16 @@ bool Scheduler::halt()
     return op.queue(_queue);
 }
 
-uint8_t Scheduler::getID(Service &service)
+uint8_t Scheduler::getID(Process &process)
 {
-    return service.getID();
+    return process.getID();
 }
 
-uint8_t Scheduler::countServices(bool enabledOnly)
+uint8_t Scheduler::countProcesses(bool enabledOnly)
 {
 
     uint8_t count=0;
-    for (Service *curr = _head; curr != NULL; curr = curr->getNext())
+    for (Process *curr = _head; curr != NULL; curr = curr->getNext())
     {
         count += enabledOnly ? curr->isEnabled() : 1;
     }
@@ -125,7 +125,7 @@ int Scheduler::run()
                 _active->resetSchedulerWarning();
             }
 
-#ifdef _SERVICE_EXCEPTION_HANDLING
+#ifdef _PROCESS_EXCEPTION_HANDLING
             int ret = setjmp(_env);
             if (!ret) {
                 _active->service();
@@ -137,7 +137,7 @@ int Scheduler::run()
 #endif
 
 
-#ifdef _SERVICE_STATISTICS
+#ifdef _PROCESS_STATISTICS
             uint32_t runTime = getCurrTS() - start;
             // Make sure no overflow happens
             if (_active->statsWillOverflow(1, runTime))
@@ -162,53 +162,53 @@ int Scheduler::run()
 }
 
 /************ PROTECTED ***************/
-void Scheduler::procDisable(Service &service)
+void Scheduler::procDisable(Process &process)
 {
-    if (service.isEnabled() && isNotDestroyed(service)) {
-        service.onDisable();
-        service.setDisabled();
+    if (process.isEnabled() && isNotDestroyed(process)) {
+        process.onDisable();
+        process.setDisabled();
     }
 }
 
 
-void Scheduler::procEnable(Service &service)
+void Scheduler::procEnable(Process &process)
 {
-    if (!service.isEnabled() && isNotDestroyed(service)) {
-        service.onEnable();
-        service.setEnabled();
+    if (!process.isEnabled() && isNotDestroyed(process)) {
+        process.onEnable();
+        process.setEnabled();
     }
 }
 
 
-void Scheduler::procDestroy(Service &service)
+void Scheduler::procDestroy(Process &process)
 {
-    if (isNotDestroyed(service)) {
-        procDisable(service);
-        service.cleanup();
-        removeNode(service);
+    if (isNotDestroyed(process)) {
+        procDisable(process);
+        process.cleanup();
+        removeNode(process);
     }
 }
 
 
-void Scheduler::procAdd(Service &service)
+void Scheduler::procAdd(Process &process)
 {
-    if (!isNotDestroyed(service)) {
-        for (; findById(service.getID()) != NULL; service.setID(++_lastID)) // Find a free id
-        service.setup();
-        procEnable(service);
-        appendNode(service);
+    if (!isNotDestroyed(process)) {
+        for (; findById(process.getID()) != NULL; process.setID(++_lastID)) // Find a free id
+        process.setup();
+        procEnable(process);
+        appendNode(process);
 
-#ifdef _SERVICE_STATISTICS
-        service.setHistRuntime(0);
-        service.setHistIterations(0);
-        service.setHistLoadPercent(0);
+#ifdef _PROCESS_STATISTICS
+        process.setHistRuntime(0);
+        process.setHistIterations(0);
+        process.setHistLoadPercent(0);
 #endif
     }
 }
 
 void Scheduler::procHalt()
 {
-    for (Service *serv = _head; serv != NULL; serv = serv->getNext())
+    for (Process *serv = _head; serv != NULL; serv = serv->getNext())
         procDestroy(*serv);
 
     HALT_PROCESSOR();
@@ -225,26 +225,26 @@ void Scheduler::processQueue()
         switch (op.getOperation())
         {
             case QueableOperation::ENABLE_SERVICE:
-                procEnable(*op.getService());
+                procEnable(*op.getProcess());
                 break;
 
             case QueableOperation::DISABLE_SERVICE:
-                procDisable(*op.getService());
+                procDisable(*op.getProcess());
                 break;
 
             case QueableOperation::ADD_SERVICE:
-                procAdd(*op.getService());
+                procAdd(*op.getProcess());
                 break;
 
             case QueableOperation::DESTROY_SERVICE:
-                procDestroy(*op.getService());
+                procDestroy(*op.getProcess());
                 break;
 
             case QueableOperation::HALT:
                 procHalt();
                 break;
 
-#ifdef _SERVICE_STATISTICS
+#ifdef _PROCESS_STATISTICS
             case QueableOperation::UPDATE_STATS:
                 procUpdateStats();
                 break;
@@ -256,7 +256,7 @@ void Scheduler::processQueue()
     }
 }
 
-#ifdef _SERVICE_STATISTICS
+#ifdef _PROCESS_STATISTICS
 
 bool Scheduler::updateStats()
 {
@@ -268,13 +268,13 @@ bool Scheduler::updateStats()
 void Scheduler::procUpdateStats()
 {
 
-    uint8_t count = countServices(false);
+    uint8_t count = countProcesses(false);
     HISTORY_TIME_TYPE sTime[count];
 
     // Thread safe in case of interrupts
     HISTORY_TIME_TYPE totalTime;
     uint8_t i;
-    Service *n;
+    Process *n;
     for(n = _head, i=0, totalTime=0; n != NULL && i < count; n = n->getNext(), i++)
     {
         // to ensure no overflows
@@ -299,7 +299,7 @@ void Scheduler::procUpdateStats()
 // Make sure it is locked
 void Scheduler::handleHistOverFlow(uint8_t div)
 {
-    for(Service *n = _head; n != NULL; n = n->getNext())
+    for(Process *n = _head; n != NULL; n = n->getNext())
         n->divStats(div);
 }
 
@@ -328,14 +328,14 @@ void Scheduler::handleHistOverFlow(uint8_t div)
 
 
 
-bool Scheduler::appendNode(Service &node)
+bool Scheduler::appendNode(Process &node)
 {
     node.setNext(NULL);
 
     if (!_head) {
         _head = &node;
     } else {
-        Service *next = _head;
+        Process *next = _head;
         for(; next->hasNext(); next = next->getNext()); //run through list
         // Update pointers
         next->setNext(&node);
@@ -343,13 +343,13 @@ bool Scheduler::appendNode(Service &node)
     return true;
 }
 
-bool Scheduler::removeNode(Service &node)
+bool Scheduler::removeNode(Process &node)
 {
     if (&node == _head) { // node is head
         _head = node.getNext();
     } else {
         // Find the previous node
-        Service *prev = _head;
+        Process *prev = _head;
         for (; prev != NULL && prev->getNext() != &node; prev = prev->getNext());
 
         if (!prev) return false; // previous node does not exist
@@ -359,9 +359,9 @@ bool Scheduler::removeNode(Service &node)
 }
 
 
-bool Scheduler::findNode(Service &node)
+bool Scheduler::findNode(Process &node)
 {
-    Service *prev = _head;
+    Process *prev = _head;
     for (; prev != NULL && prev != &node; prev = prev->getNext());
 
     return prev;

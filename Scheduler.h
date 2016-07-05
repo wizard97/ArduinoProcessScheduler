@@ -7,7 +7,7 @@
 
 #define SCHEDULER_JOB_QUEUE_SIZE 20
 
-class Service;
+class Process;
 
 class Scheduler
 {
@@ -15,20 +15,20 @@ class Scheduler
 public:
     Scheduler();
     ~Scheduler();
-    bool add(Service &service);
-    bool disable(Service &service);
-    bool enable(Service &service);
-    bool destroy(Service &service);
+    bool add(Process &process);
+    bool disable(Process &process);
+    bool enable(Process &process);
+    bool destroy(Process &process);
     bool halt();
 
-    uint8_t getID(Service &service);
-    bool isRunningService(Service &service);
-    bool isNotDestroyed(Service &service);
-    bool isEnabled(Service &service);
+    uint8_t getID(Process &process);
+    bool isRunningProcess(Process &process);
+    bool isNotDestroyed(Process &process);
+    bool isEnabled(Process &process);
 
-    Service *getCurrService();
-    Service *findById(uint8_t id);
-    uint8_t countServices(bool enabledOnly = true);
+    Process *getCurrProcess();
+    Process *findById(uint8_t id);
+    uint8_t countProcesses(bool enabledOnly = true);
     uint32_t getCurrTS();
 
     int run();
@@ -46,47 +46,47 @@ protected:
             DISABLE_SERVICE,
             ENABLE_SERVICE,
             HALT,
-#ifdef _SERVICE_STATISTICS
+#ifdef _PROCESS_STATISTICS
             UPDATE_STATS,
 #endif
         };
 
-        QueableOperation() : _service(NULL), _operation(static_cast<uint8_t>(NONE)) {}
-        QueableOperation(OperationType op) : _service(NULL), _operation(static_cast<uint8_t>(op)) {}
-        QueableOperation(Service *serv, OperationType op)
-            : _service(serv), _operation(static_cast<uint8_t>(op)) {}
+        QueableOperation() : _process(NULL), _operation(static_cast<uint8_t>(NONE)) {}
+        QueableOperation(OperationType op) : _process(NULL), _operation(static_cast<uint8_t>(op)) {}
+        QueableOperation(Process *serv, OperationType op)
+            : _process(serv), _operation(static_cast<uint8_t>(op)) {}
 
-        Service *getService() { return _service; }
+        Process *getProcess() { return _process; }
         OperationType getOperation() { return static_cast<OperationType>(_operation); }
         bool queue(RingBuf *queue) { return queue->add(queue, this) >= 0; }
 
     private:
-        Service *_service;
+        Process *_process;
         const uint8_t _operation;
     };
 
     // Methods that process queued operations
-    void procDisable(Service &service);
-    void procEnable(Service &service);
-    void procDestroy(Service &service);
-    void procAdd(Service &service);
+    void procDisable(Process &process);
+    void procEnable(Process &process);
+    void procDestroy(Process &process);
+    void procAdd(Process &process);
     void procHalt();
 
     void processQueue();
     // Linked list methods
-    bool appendNode(Service &node); // true on success
-    bool removeNode(Service &node); // true on success
-    bool findNode(Service &node); // True if node exists in list
+    bool appendNode(Process &node); // true on success
+    bool removeNode(Process &node); // true on success
+    bool findNode(Process &node); // True if node exists in list
 
 
-    Service *volatile _head;
-    Service *_active;
+    Process *volatile _head;
+    Process *_active;
     uint8_t _lastID;
     RingBuf *_queue;
 
 private:
 
-#ifdef _SERVICE_STATISTICS
+#ifdef _PROCESS_STATISTICS
 public:
     bool updateStats();
 private:
@@ -96,10 +96,10 @@ private:
 #endif
 
 
-#ifdef _SERVICE_EXCEPTION_HANDLING
+#ifdef _PROCESS_EXCEPTION_HANDLING
 public:
     void raiseException(int e);
-    virtual void handleException(Service &service, int e) { };
+    virtual void handleException(Process &process, int e) { };
 protected:
     bool eDispatcher(int e);
     jmp_buf _env;

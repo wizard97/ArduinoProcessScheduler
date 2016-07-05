@@ -1,17 +1,17 @@
-#ifndef SERVICE_H
-#define SERVICE_H
+#ifndef PROCESS_H
+#define PROCESS_H
 
 #include "RingBuf.h"
 #include "Scheduler.h"
 #include "Includes.h"
 
-// Service period
+// Process period
 #define SERVICE_CONSTANTLY 0
 #define SERVICE_SECONDLY 1000
 #define SERVICE_MINUTELY 60000
 #define SERVICE_HOURLY 3600000
 
-// Number of services
+// Number of Processs
 #define RUNTIME_FOREVER -1
 #define RUNTIME_ONCE 1
 
@@ -21,11 +21,11 @@
 class Scheduler;
 
 
-class Service
+class Process
 {
     friend class Scheduler;
 public:
-    Service(Scheduler &manager, unsigned int period,
+    Process(Scheduler &manager, unsigned int period,
             int iterations=RUNTIME_FOREVER, bool enabled=true,
             int16_t overSchedThresh = OVERSCHEDULED_NO_WARNING);
 
@@ -58,13 +58,13 @@ protected:
     //called on enable/disable
     virtual void onEnable();
     virtual void onDisable();
-    // service routine
+    // Process routine
     virtual void service() = 0;
     // Overscheduled warning
     virtual void overScheduledHandler(uint32_t behind);
 
 private:
-    enum ServiceFlags
+    enum ProcessFlags
     {
         FLAG_ENABLE = 0,
         FLAG_DISABLE,
@@ -78,9 +78,9 @@ private:
     inline bool hasNext() { return _next; }
     // GETTERS
     inline bool forceSet() { return _force; }
-    inline Service *getNext() { return _next; }
+    inline Process *getNext() { return _next; }
     // SETTERS
-    inline void setNext(Service *next) { this->_next = next; }
+    inline void setNext(Process *next) { this->_next = next; }
     inline void setID(uint8_t sid) { this->_sid = sid; }
     inline void decIterations() { _iterations--; }
     inline void setScheduledTS(uint32_t ts) { _scheduledTS = ts; }
@@ -98,14 +98,14 @@ private:
     uint8_t _sid;
     uint32_t _scheduledTS, _actualTS;
     // Linked List
-    Service *volatile _next;
+    Process *volatile _next;
 
     // Tracks overscheduled
     uint16_t _overSchedThresh, _pBehind;
 
 
 
-#ifdef _SERVICE_STATISTICS
+#ifdef _PROCESS_STATISTICS
 public:
     uint32_t getAvgRunTime();
     inline uint8_t getLoadPercent() { return _histLoadPercent; }
@@ -125,7 +125,7 @@ private:
 #endif
 
 
-#ifdef _SERVICE_EXCEPTION_HANDLING
+#ifdef _PROCESS_EXCEPTION_HANDLING
 
 protected:
     // By default do not handle
