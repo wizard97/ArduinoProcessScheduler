@@ -31,7 +31,7 @@ bool Scheduler::isRunningProcess(Process &process)
     return _active && &process == _active;
 }
 
-Process *Scheduler::findById(uint8_t id)
+Process *Scheduler::findProcById(uint8_t id)
 {
     for (Process *serv = _head; serv != NULL; serv = serv->getNext())
     {
@@ -196,7 +196,7 @@ void Scheduler::procDestroy(Process &process)
 void Scheduler::procAdd(Process &process)
 {
     if (!isNotDestroyed(process)) {
-        for (; findById(process.getID()) != NULL; process.setID(++_lastID)) // Find a free id
+        for (; findProcById(process.getID()) != NULL; process.setID(++_lastID)) // Find a free id
         process.setup();
         procEnable(process);
         appendNode(process);
@@ -218,6 +218,34 @@ void Scheduler::procHalt()
 }
 
 
+/* Queue object */
+// This is so ugly, stupid namespace crap
+Scheduler::QueableOperation::QueableOperation() : _process(NULL), _operation(static_cast<uint8_t>(NONE)) {}
+
+Scheduler::QueableOperation::QueableOperation(Scheduler::QueableOperation::QueableOperation::OperationType op)
+        : _process(NULL), _operation(static_cast<uint8_t>(op)) {}
+
+Scheduler::QueableOperation::QueableOperation(Process *serv, Scheduler::QueableOperation::QueableOperation::OperationType op)
+    : _process(serv), _operation(static_cast<uint8_t>(op)) {}
+
+Process *Scheduler::QueableOperation::getProcess()
+{
+    return _process;
+}
+
+Scheduler::QueableOperation::QueableOperation::OperationType Scheduler::QueableOperation::getOperation()
+{
+    return static_cast<Scheduler::QueableOperation::QueableOperation::OperationType>(_operation);
+}
+
+bool Scheduler::QueableOperation::queue(RingBuf *queue)
+{
+    return queue->add(queue, this) >= 0;
+}
+
+/* end Queue object garbage */
+
+
 //Only call when there is guarantee this is not running in another call frame
 void Scheduler::processQueue()
 {
@@ -225,8 +253,7 @@ void Scheduler::processQueue()
     {
         QueableOperation op;
         _queue->pull(_queue, &op);
-        Serial.print("Processing queue item: ");
-        Serial.println(op.getOperation());
+
         switch (op.getOperation())
         {
             case QueableOperation::ENABLE_SERVICE:

@@ -2,10 +2,12 @@
 #define SCHEDULER_H
 
 #include "Includes.h"
-#include "setjmp.h"
-#include "RingBuf.h" // For queing events
 
-#define SCHEDULER_JOB_QUEUE_SIZE 20
+#ifndef SCHEDULER_JOB_QUEUE_SIZE
+    #define SCHEDULER_JOB_QUEUE_SIZE 20
+#endif
+
+typedef struct RingBuf RingBuf;
 
 class Process;
 
@@ -27,7 +29,7 @@ public:
     bool isEnabled(Process &process);
 
     Process *getCurrProcess();
-    Process *findById(uint8_t id);
+    Process *findProcById(uint8_t id);
     uint8_t countProcesses(bool enabledOnly = true);
     uint32_t getCurrTS();
 
@@ -51,14 +53,13 @@ protected:
 #endif
         };
 
-        QueableOperation() : _process(NULL), _operation(static_cast<uint8_t>(NONE)) {}
-        QueableOperation(OperationType op) : _process(NULL), _operation(static_cast<uint8_t>(op)) {}
-        QueableOperation(Process *serv, OperationType op)
-            : _process(serv), _operation(static_cast<uint8_t>(op)) {}
+        QueableOperation();
+        QueableOperation(OperationType op);
+        QueableOperation(Process *serv, OperationType op);
 
-        Process *getProcess() { return _process; }
-        OperationType getOperation() { return static_cast<OperationType>(_operation); }
-        bool queue(RingBuf *queue) { return queue->add(queue, this) >= 0; }
+        Process *getProcess();
+        OperationType getOperation();
+        bool queue(RingBuf *queue);
 
     private:
         Process *_process;

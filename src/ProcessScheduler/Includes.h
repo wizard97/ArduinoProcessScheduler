@@ -1,15 +1,16 @@
 #ifndef SCHEDULER_PROCESS_INCLUDES_H
 #define SCHEDULER_PROCESS_INCLUDES_H
 
-#include "Arduino.h"
+#include <Arduino.h>
+#include <RingBuf.h>
+#include "Config.h"
+
 
 class Scheduler;
 class Process;
 
-#define _PROCESS_STATISTICS
-#define _PROCESS_EXCEPTION_HANDLING
-
 #if defined(ARDUINO_ARCH_AVR)
+    #include <setjmp.h>
     #include <util/atomic.h>
     #define ATOMIC_START ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     #define ATOMIC_END }
@@ -48,11 +49,8 @@ class Process;
     #define TIMESTAMP() millis()
 #endif
 
-#ifdef _PROCESS_STATISTICS
-    #define HISTORY_COUNT_TYPE uint32_t
-    #define HISTORY_TIME_TYPE uint32_t
-
-    #define HISTORY_DIV_FACTOR 2
+#if defined(_PROCESS_EXCEPTION_HANDLING) && defined(ARDUINO_ARCH_ESP8266)
+    #error "'_PROCESS_EXCEPTION_HANDLING' is not supported on the ESP8266."
 #endif
 
 #endif

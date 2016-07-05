@@ -1,9 +1,8 @@
 #ifndef PROCESS_H
 #define PROCESS_H
 
-#include "RingBuf.h"
-#include "Scheduler.h"
 #include "Includes.h"
+#include "Scheduler.h"
 
 // Process period
 #define SERVICE_CONSTANTLY 0
@@ -14,8 +13,6 @@
 // Number of Processs
 #define RUNTIME_FOREVER -1
 #define RUNTIME_ONCE 1
-
-#define MAX_QUEUED_FLAGS 10
 
 #define OVERSCHEDULED_NO_WARNING 0
 class Scheduler;
@@ -110,16 +107,16 @@ public:
     uint32_t getAvgRunTime();
     inline uint8_t getLoadPercent() { return _histLoadPercent; }
 private:
-    bool statsWillOverflow(HISTORY_COUNT_TYPE iter, HISTORY_TIME_TYPE tm);
+    bool statsWillOverflow(hIterCount_t iter, hTimeCount_t tm);
     void divStats(uint8_t div);
-    inline void setHistIterations(HISTORY_COUNT_TYPE val) { _histIterations = val; }
-    inline void setHistRuntime(HISTORY_TIME_TYPE val) { _histRunTime = val; }
+    inline void setHistIterations(hIterCount_t val) { _histIterations = val; }
+    inline void setHistRuntime(hTimeCount_t val) { _histRunTime = val; }
     inline void setHistLoadPercent(uint8_t percent) { _histLoadPercent = percent; }
-    inline HISTORY_COUNT_TYPE getHistIterations() { return _histIterations; }
-    inline HISTORY_TIME_TYPE getHistRunTime() { return _histRunTime; }
+    inline hIterCount_t getHistIterations() { return _histIterations; }
+    inline hTimeCount_t getHistRunTime() { return _histRunTime; }
 
-    HISTORY_COUNT_TYPE _histIterations;
-    HISTORY_TIME_TYPE _histRunTime;
+    hIterCount_t _histIterations;
+    hTimeCount_t _histRunTime;
     uint8_t _histLoadPercent;
 
 #endif

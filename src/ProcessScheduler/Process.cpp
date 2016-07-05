@@ -113,7 +113,7 @@
         return _histRunTime / _histIterations;
     }
 
-    bool Process::statsWillOverflow(HISTORY_COUNT_TYPE iter, HISTORY_TIME_TYPE tm)
+    bool Process::statsWillOverflow(hIterCount_t iter, hTimeCount_t tm)
     {
         return (_histIterations > _histIterations + iter) || (_histRunTime > _histRunTime + tm);
 
