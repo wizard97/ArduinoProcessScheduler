@@ -15,7 +15,7 @@ class Scheduler
 public:
     Scheduler();
     ~Scheduler();
-    bool add(Process &process);
+    bool add(Process &process, bool enableIfNot = false);
     bool disable(Process &process);
     bool enable(Process &process);
     bool destroy(Process &process);

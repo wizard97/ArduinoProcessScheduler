@@ -64,10 +64,13 @@ bool Scheduler::enable(Process &process)
     return op.queue(_queue);
 }
 
-bool Scheduler::add(Process &process)
+bool Scheduler::add(Process &process, bool enableIfNot)
 {
     QueableOperation op(&process, QueableOperation::ADD_SERVICE);
-    return op.queue(_queue);
+    bool ret = op.queue(_queue);
+    if (ret && enableIfNot)
+        ret &= enable(process);
+    return ret;
 }
 
 bool Scheduler::destroy(Process &process)
@@ -101,8 +104,8 @@ uint8_t Scheduler::countProcesses(bool enabledOnly)
 
 int Scheduler::run()
 {
-    // Nothing to run or already running in another call frame
-    if (!_head || _active) return 0;
+    // Already running in another call frame
+    if (_active) return 0;
 
     processQueue();
 
@@ -222,6 +225,8 @@ void Scheduler::processQueue()
     {
         QueableOperation op;
         _queue->pull(_queue, &op);
+        Serial.print("Processing queue item: ");
+        Serial.println(op.getOperation());
         switch (op.getOperation())
         {
             case QueableOperation::ENABLE_SERVICE:
@@ -306,7 +311,7 @@ void Scheduler::handleHistOverFlow(uint8_t div)
 #endif
 
 
-#ifdef _SERVICE_EXCEPTION_HANDLING
+#ifdef _PROCESS_EXCEPTION_HANDLING
     void Scheduler::raiseException(int e)
     {
         longjmp(_env, e);

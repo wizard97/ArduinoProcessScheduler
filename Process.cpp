@@ -3,17 +3,17 @@
 
     /*********** PUBLIC *************/
     Process::Process(Scheduler &scheduler, unsigned int period,
-            int iterations, bool enabled, int16_t overSchedThresh)
+            int iterations, int16_t overSchedThresh)
     : _scheduler(scheduler)
     {
+        this->_enabled = false;
         this->_period = period;
         this->_iterations = iterations;
-        this->_enabled = enabled;
         this->_scheduledTS = _scheduler.getCurrTS();
         this->_actualTS = _scheduler.getCurrTS();
         this->_force = false;
         this->_overSchedThresh = overSchedThresh;
-        this->_pBehind = overSchedThresh;
+        this->_pBehind = 0;
     }
 
 
@@ -35,9 +35,9 @@
         return _scheduler.destroy(*this);
     }
 
-    bool Process::add()
+    bool Process::add(bool enableIfNot)
     {
-        return _scheduler.add(*this);
+        return _scheduler.add(*this, enableIfNot);
     }
 
 

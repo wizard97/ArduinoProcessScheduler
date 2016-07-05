@@ -26,12 +26,12 @@ class Process
     friend class Scheduler;
 public:
     Process(Scheduler &manager, unsigned int period,
-            int iterations=RUNTIME_FOREVER, bool enabled=true,
+            int iterations=RUNTIME_FOREVER,
             int16_t overSchedThresh = OVERSCHEDULED_NO_WARNING);
 
     int getID();
     inline Scheduler &scheduler() { return _scheduler; }
-    bool add();
+    bool add(bool enableIfNot=false);
     bool disable();
     bool enable();
     bool destroy();
