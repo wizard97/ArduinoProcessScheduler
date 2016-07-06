@@ -100,7 +100,7 @@ private:
 public:
     inline uint32_t getTimeout() {return _timeout;}
 protected:
-    inline void setTimeout(uint32_t timeout) { _timeout = timeout; }
+    void setTimeout(uint32_t timeout);
 private:
     uint32_t _timeout;
 

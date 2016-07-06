@@ -119,6 +119,21 @@
     }
 
 
+#ifdef _PROCESS_TIMEOUT_INTERRUPTS
+
+    void Process::setTimeout(uint32_t timeout)
+    {
+        // Can not let interrupt happen 
+        ATOMIC_START
+        {
+            _timeout = timeout;
+        }
+        ATOMIC_END
+    }
+
+
+#endif
+
 #ifdef _PROCESS_STATISTICS
 
     uint32_t Process::getAvgRunTime()
