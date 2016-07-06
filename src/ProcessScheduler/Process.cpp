@@ -2,9 +2,9 @@
 #include "Scheduler.h"
 
     /*********** PUBLIC *************/
-    Process::Process(Scheduler &scheduler, unsigned int period,
+    Process::Process(Scheduler &scheduler, ProcPriority priority, unsigned int period,
             int iterations, int16_t overSchedThresh)
-    : _scheduler(scheduler)
+    : _scheduler(scheduler), _pLevel(priority)
     {
         this->_enabled = false;
         this->_period = period;
@@ -74,19 +74,28 @@
     }
 
 
-    void Process::willService(uint32_t ts)
+    void Process::willService(uint32_t now)
     {
         if (!_force)
         {
             if (getPeriod() != SERVICE_CONSTANTLY)
                 setScheduledTS(getScheduledTS() + getPeriod());
             else
-                setScheduledTS(ts);
+                setScheduledTS(now);
         } else {
             _force = false;
         }
 
-        setActualTS(ts);
+        setActualTS(now);
+
+        // Handle scheduler warning
+        if (getOverSchedThresh() != OVERSCHEDULED_NO_WARNING && isPBehind(now)) {
+            incrPBehind();
+            if (getCurrPBehind() >= getOverSchedThresh())
+                overScheduledHandler(now - getScheduledTS());
+        } else {
+            resetSchedulerWarning();
+        }
     }
 
 

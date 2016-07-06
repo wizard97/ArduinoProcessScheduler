@@ -12,6 +12,23 @@
 /* Uncomment this to use microseconds instead of milliseconds for timestamp unit (more precise) */
 //#define _MICROS_PRECISION
 
+/* The size of the scheduler job queue, */
+//increase if add(), destroy(), enable(), disable(), or updateStats() is returning false*/
+#define SCHEDULER_JOB_QUEUE_SIZE 20
+
+typedef enum ProcPriority
+{
+    // Feel free to add custom prority levels in here
+    ////////////// BEGIN //////////////////
+    HIGH_PRIORITY = 0,
+    MEDIUM_PRIORITY,
+    LOW_PRIORITY,
+
+    ////////////// END //////////////////
+
+    NUM_PRIORITY_LEVELS
+} ProcPriority;
+
 
 #ifdef _PROCESS_STATISTICS
 /*** The larger the following two types are, the more accurate the statistics will be ****/

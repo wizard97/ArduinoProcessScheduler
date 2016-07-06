@@ -3,8 +3,8 @@
 
 
 Scheduler::Scheduler()
+: _head{}, _nextProc{}
 {
-    _head = NULL;
     _lastID = 0;
     // Create queue
     _queue = RingBuf_new(sizeof(QueableOperation), SCHEDULER_JOB_QUEUE_SIZE);
@@ -33,10 +33,13 @@ bool Scheduler::isRunningProcess(Process &process)
 
 Process *Scheduler::findProcById(uint8_t id)
 {
-    for (Process *serv = _head; serv != NULL; serv = serv->getNext())
+    for (uint8_t i=0; i < NUM_PRIORITY_LEVELS; i++)
     {
-        if (serv->getID() == id)
-            return serv;
+        for (Process *serv = _head[i]; serv != NULL; serv = serv->getNext())
+        {
+            if (serv->getID() == id)
+                return serv;
+        }
     }
     return NULL;
 }
@@ -90,13 +93,18 @@ uint8_t Scheduler::getID(Process &process)
     return process.getID();
 }
 
-uint8_t Scheduler::countProcesses(bool enabledOnly)
+uint8_t Scheduler::countProcesses(int priority, bool enabledOnly)
 {
 
     uint8_t count=0;
-    for (Process *curr = _head; curr != NULL; curr = curr->getNext())
+    for (uint8_t i = (priority == ALL_PRIORITY_LEVELS) ? 0 : (uint8_t)priority; i < NUM_PRIORITY_LEVELS; i++)
     {
-        count += enabledOnly ? curr->isEnabled() : 1;
+        for (Process *curr = _head[i]; curr != NULL; curr = curr->getNext())
+        {
+            count += enabledOnly ? curr->isEnabled() : 1;
+        }
+        if (priority != ALL_PRIORITY_LEVELS)
+            break;
     }
 
     return count;
@@ -109,24 +117,20 @@ int Scheduler::run()
 
     processQueue();
 
-    int count = 0;
-    for (_active = _head; _active != NULL ; _active = _active->getNext(), count++)
+    uint8_t count = 0;
+    for (uint8_t pLevel=0; pLevel < NUM_PRIORITY_LEVELS; pLevel++)
     {
+        _active = _nextProc[pLevel];
+        if (!_active)
+            continue;
+
+        /////////// Run the correct process /////////
         uint32_t start = getCurrTS();
 
         if (_active->needsServicing(start))
         {
             bool force = _active->forceSet(); // Store whether it was a forced iteraiton
             _active->willService(start);
-
-            // Handle scheduler warning
-            if (_active->getOverSchedThresh() != OVERSCHEDULED_NO_WARNING && _active->isPBehind(start)) {
-                _active->incrPBehind();
-                if (_active->getCurrPBehind() >= _active->getOverSchedThresh())
-                    _active->overScheduledHandler(start - _active->getScheduledTS());
-            } else {
-                _active->resetSchedulerWarning();
-            }
 
 #ifdef _PROCESS_EXCEPTION_HANDLING
             int ret = setjmp(_env);
@@ -154,15 +158,27 @@ int Scheduler::run()
             if (_active->wasServiced(force)) {
                 disable(*_active);
             }
-        }
-        processQueue();
 
+            count++; // incr counter
+        }
+        //////////////////////END PROCESS SERVICING//////////////////////
+        processQueue();
+        delay(0); // For esp8266
+
+        // Determine what to do next ///
+        // If process somehow got destroyed, or if reached last process
+        if (!isNotDestroyed(*_active) || !_active->hasNext()) {
+            _nextProc[pLevel] = _head[pLevel]; // Set next to first
+        } else { // If there is another item in current proc level chain
+            _nextProc[pLevel] = _active->getNext();
+            _active = NULL;
+            break;
+        }
     }
 
-    _active = NULL;
-    delay(0); // For ESP8266 support
     return count;
 }
+
 
 /************ PROTECTED ***************/
 void Scheduler::procDisable(Process &process)
@@ -196,7 +212,7 @@ void Scheduler::procDestroy(Process &process)
 void Scheduler::procAdd(Process &process)
 {
     if (!isNotDestroyed(process)) {
-        for (; findProcById(process.getID()) != NULL; process.setID(++_lastID)) // Find a free id
+        for (; process.getID() == 0 || findProcById(process.getID()) != NULL; process.setID(++_lastID)); // Find a free id
         process.setup();
         procEnable(process);
         appendNode(process);
@@ -211,8 +227,13 @@ void Scheduler::procAdd(Process &process)
 
 void Scheduler::procHalt()
 {
-    for (Process *serv = _head; serv != NULL; serv = serv->getNext())
-        procDestroy(*serv);
+    for (uint8_t i = 0; i < NUM_PRIORITY_LEVELS; i++)
+    {
+        for (Process *curr = _head[i]; curr != NULL; curr = curr->getNext())
+        {
+            procDestroy(*curr);
+        }
+    }
 
     HALT_PROCESSOR();
 }
@@ -253,7 +274,6 @@ void Scheduler::processQueue()
     {
         QueableOperation op;
         _queue->pull(_queue, &op);
-
         switch (op.getOperation())
         {
             case QueableOperation::ENABLE_SERVICE:
@@ -300,28 +320,35 @@ bool Scheduler::updateStats()
 void Scheduler::procUpdateStats()
 {
 
-    uint8_t count = countProcesses(false);
-    HISTORY_TIME_TYPE sTime[count];
+    uint8_t count = countProcesses(ALL_PRIORITY_LEVELS, false);
+    hTimeCount_t sTime[count];
 
     // Thread safe in case of interrupts
-    HISTORY_TIME_TYPE totalTime;
+    hTimeCount_t totalTime = 0;
+    Process *p;
     uint8_t i;
-    Process *n;
-    for(n = _head, i=0, totalTime=0; n != NULL && i < count; n = n->getNext(), i++)
+
+    for (uint8_t l = 0; l < NUM_PRIORITY_LEVELS; l++)
     {
-        // to ensure no overflows
-        sTime[i] = n->getHistRunTime() / count;
-        totalTime += sTime[i];
+        for (i = 0, p = _head[l]; p != NULL && i < count; p = p->getNext(), i++)
+        {
+            // to ensure no overflows
+            sTime[i] = (p->getHistRunTime() + count/2) / count;
+            totalTime += sTime[i];
+        }
     }
 
-    for(i=0, n = _head; n != NULL && i < count; n = n->getNext(), i++)
+    for (uint8_t l = 0; l < NUM_PRIORITY_LEVELS; l++)
     {
-        // to ensure no overflows have to use double
-        if (!totalTime) {
-            n->setHistLoadPercent(0);
-        } else {
-            double tmp = 100*((double)sTime[i]/(double)totalTime);
-            n->setHistLoadPercent((uint8_t)tmp);
+        for (i = 0, p = _head[l]; p != NULL && i < count; p = p->getNext(), i++)
+        {
+            // to ensure no overflows have to use double
+            if (!totalTime) {
+                p->setHistLoadPercent(0);
+            } else {
+                double tmp = 100*((double)sTime[i]/(double)totalTime);
+                p->setHistLoadPercent((uint8_t)tmp);
+            }
         }
     }
 
@@ -331,8 +358,14 @@ void Scheduler::procUpdateStats()
 // Make sure it is locked
 void Scheduler::handleHistOverFlow(uint8_t div)
 {
-    for(Process *n = _head; n != NULL; n = n->getNext())
-        n->divStats(div);
+    for (uint8_t i = 0; i < NUM_PRIORITY_LEVELS; i++)
+    {
+        for (Process *p = _head[i]; p != NULL; p = p->getNext())
+        {
+            p->divStats(div);
+        }
+    }
+
 }
 
 #endif
@@ -364,10 +397,13 @@ bool Scheduler::appendNode(Process &node)
 {
     node.setNext(NULL);
 
-    if (!_head) {
-        _head = &node;
+    ProcPriority p = node.getPriority();
+
+    if (!_head[p]) {
+        _head[p] = &node;
+        _nextProc[p] = &node;
     } else {
-        Process *next = _head;
+        Process *next = _head[p];
         for(; next->hasNext(); next = next->getNext()); //run through list
         // Update pointers
         next->setNext(&node);
@@ -377,14 +413,21 @@ bool Scheduler::appendNode(Process &node)
 
 bool Scheduler::removeNode(Process &node)
 {
-    if (&node == _head) { // node is head
-        _head = node.getNext();
+    ProcPriority p = node.getPriority();
+
+    if (&node == _head[p]) { // node is head
+        _head[p] = node.getNext();
+        _nextProc[p] = NULL;
     } else {
         // Find the previous node
-        Process *prev = _head;
+        Process *prev = _head[p];
         for (; prev != NULL && prev->getNext() != &node; prev = prev->getNext());
 
         if (!prev) return false; // previous node does not exist
+
+        if (_nextProc[p] == &node)
+            _nextProc[p] = node.hasNext() ? node.getNext() : _head[p];
+
         prev->setNext(node.getNext());
     }
     return true;
@@ -393,8 +436,10 @@ bool Scheduler::removeNode(Process &node)
 
 bool Scheduler::findNode(Process &node)
 {
-    Process *prev = _head;
-    for (; prev != NULL && prev != &node; prev = prev->getNext());
-
-    return prev;
+    for (Process *p = _head[node.getPriority()]; p != NULL; p = p->getNext())
+    {
+        if (p == &node)
+            return true;
+    }
+    return false;
 }

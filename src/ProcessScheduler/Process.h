@@ -15,6 +15,7 @@
 #define RUNTIME_ONCE 1
 
 #define OVERSCHEDULED_NO_WARNING 0
+
 class Scheduler;
 
 
@@ -22,7 +23,7 @@ class Process
 {
     friend class Scheduler;
 public:
-    Process(Scheduler &manager, unsigned int period,
+    Process(Scheduler &manager, ProcPriority priority, unsigned int period,
             int iterations=RUNTIME_FOREVER,
             int16_t overSchedThresh = OVERSCHEDULED_NO_WARNING);
 
@@ -33,8 +34,8 @@ public:
     bool enable();
     bool destroy();
 
-    inline int32_t timeToNextRun() { return (_scheduledTS + _period) - _scheduler.getCurrTS(); };
-    inline uint32_t getScheduledTS() { return _scheduledTS; }; // The ts the most recent iteration should of started
+    inline int32_t timeToNextRun() { return (_scheduledTS + _period) - _scheduler.getCurrTS(); }
+    inline uint32_t getScheduledTS() { return _scheduledTS; } // The ts the most recent iteration should of started
     inline uint32_t getActualRunTS() { return _actualTS; }
 
     inline bool isEnabled() { return _enabled; }
@@ -43,9 +44,12 @@ public:
     inline unsigned int getPeriod() { return _period; }
 
     inline void force() { _force = true; }
+
     inline void resetSchedulerWarning() { _pBehind = 0; }
     inline uint16_t getOverSchedThresh() { return _overSchedThresh; }
     inline uint16_t getCurrPBehind() { return _pBehind; }
+
+    inline ProcPriority getPriority() { return _pLevel; }
 
 protected:
     inline uint32_t getStartDelay() { return _actualTS - _scheduledTS; }
@@ -68,7 +72,7 @@ private:
         FLAG_DESTROY
     };
 
-    void willService(uint32_t ts);
+    void willService(uint32_t now);
     bool wasServiced(bool wasForced);
     bool needsServicing(uint32_t start);
     bool isPBehind(uint32_t curr);
@@ -100,6 +104,8 @@ private:
     // Tracks overscheduled
     uint16_t _overSchedThresh, _pBehind;
 
+    const ProcPriority _pLevel;
+
 
 
 #ifdef _PROCESS_STATISTICS
@@ -126,7 +132,7 @@ private:
 
 protected:
     // By default do not handle
-    virtual bool handleException(int e) { return false; };
+    virtual bool handleException(int e) { return false; }
     virtual void raiseException(int e) { _scheduler.raiseException(e); }
 #endif
 };

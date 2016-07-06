@@ -7,6 +7,8 @@
     #define SCHEDULER_JOB_QUEUE_SIZE 20
 #endif
 
+#define ALL_PRIORITY_LEVELS -1
+
 typedef struct RingBuf RingBuf;
 
 class Process;
@@ -30,7 +32,7 @@ public:
 
     Process *getCurrProcess();
     Process *findProcById(uint8_t id);
-    uint8_t countProcesses(bool enabledOnly = true);
+    uint8_t countProcesses(int priority = ALL_PRIORITY_LEVELS, bool enabledOnly = true);
     uint32_t getCurrTS();
 
     int run();
@@ -80,7 +82,9 @@ protected:
     bool findNode(Process &node); // True if node exists in list
 
 
-    Process *volatile _head;
+    Process *volatile _head[NUM_PRIORITY_LEVELS];
+    Process *volatile _nextProc[NUM_PRIORITY_LEVELS];
+
     Process *_active;
     uint8_t _lastID;
     RingBuf *_queue;
