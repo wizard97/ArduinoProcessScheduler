@@ -115,11 +115,11 @@ int Scheduler::run()
     // Already running in another call frame
     if (_active) return 0;
 
-    processQueue();
-
     uint8_t count = 0;
     for (uint8_t pLevel=0; pLevel < NUM_PRIORITY_LEVELS; pLevel++)
     {
+        processQueue();
+
         _active = _nextProc[pLevel];
         if (!_active)
             continue;
@@ -162,19 +162,20 @@ int Scheduler::run()
             count++; // incr counter
         }
         //////////////////////END PROCESS SERVICING//////////////////////
-        processQueue();
         delay(0); // For esp8266
 
         // Determine what to do next ///
-        // If process somehow got destroyed, or if reached last process
-        if (!isNotDestroyed(*_active) || !_active->hasNext()) {
+        if (!_active->hasNext()) {
             _nextProc[pLevel] = _head[pLevel]; // Set next to first
-        } else { // If there is another item in current proc level chain
-            _nextProc[pLevel] = _active->getNext();
+        } else {
+            _nextProc[pLevel] = _active->getNext(); // Set next and break
             _active = NULL;
             break;
         }
+
     }
+
+    processQueue();
 
     return count;
 }
@@ -417,7 +418,6 @@ bool Scheduler::removeNode(Process &node)
 
     if (&node == _head[p]) { // node is head
         _head[p] = node.getNext();
-        _nextProc[p] = NULL;
     } else {
         // Find the previous node
         Process *prev = _head[p];
@@ -425,11 +425,12 @@ bool Scheduler::removeNode(Process &node)
 
         if (!prev) return false; // previous node does not exist
 
-        if (_nextProc[p] == &node)
-            _nextProc[p] = node.hasNext() ? node.getNext() : _head[p];
-
         prev->setNext(node.getNext());
     }
+
+    if (_nextProc[p] == &node)
+        _nextProc[p] = node.hasNext() ? node.getNext() : _head[p];
+
     return true;
 }
 

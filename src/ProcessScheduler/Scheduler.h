@@ -81,7 +81,6 @@ protected:
     bool removeNode(Process &node); // true on success
     bool findNode(Process &node); // True if node exists in list
 
-
     Process *volatile _head[NUM_PRIORITY_LEVELS];
     Process *volatile _nextProc[NUM_PRIORITY_LEVELS];
 
