@@ -2,8 +2,12 @@
 #include "Process.h"
 
 Process *Scheduler::_active = NULL;
-jmp_buf Scheduler::_env = {};
 
+#ifdef _PROCESS_EXCEPTION_HANDLING
+jmp_buf Scheduler::_env = {};
+#endif
+
+#ifdef _PROCESS_TIMEOUT_INTERRUPTS
 ISR(TIMER0_COMPA_vect)
 {
     if (Scheduler::getActive()) { // routine is running
@@ -12,7 +16,7 @@ ISR(TIMER0_COMPA_vect)
             longjmp(Scheduler::_env, LONGJMP_ISR_CODE);
     }
 }
-
+#endif
 
 Scheduler::Scheduler()
 : _pLevels{}

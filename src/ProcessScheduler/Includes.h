@@ -78,4 +78,8 @@ typedef enum ProcessWarning
     #error "'_PROCESS_EXCEPTION_HANDLING' is not supported on the ESP8266."
 #endif
 
+
+#if defined(_PROCESS_TIMEOUT_INTERRUPTS) && !defined(_PROCESS_EXCEPTION_HANDLING)
+    #error "'_PROCESS_TIMEOUT_INTERRUPTS' requires enabling `_PROCESS_EXCEPTION_HANDLING`"
+#endif
 #endif
