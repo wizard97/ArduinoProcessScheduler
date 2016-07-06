@@ -3,12 +3,6 @@
 
 #include "Includes.h"
 
-#ifndef SCHEDULER_JOB_QUEUE_SIZE
-    #define SCHEDULER_JOB_QUEUE_SIZE 20
-#endif
-
-#define ALL_PRIORITY_LEVELS -1
-
 typedef struct RingBuf RingBuf;
 
 class Process;

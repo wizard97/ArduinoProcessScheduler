@@ -2,7 +2,7 @@
 #include "Scheduler.h"
 
     /*********** PUBLIC *************/
-    Process::Process(Scheduler &scheduler, ProcPriority priority, unsigned int period,
+    Process::Process(Scheduler &scheduler, ProcPriority priority, uint32_t period,
             int iterations, int16_t overSchedThresh)
     : _scheduler(scheduler), _pLevel(priority)
     {
@@ -50,13 +50,6 @@
             ((getPeriod() == SERVICE_CONSTANTLY || start - getScheduledTS() >= getPeriod()) &&
             (getIterations() == RUNTIME_FOREVER || getIterations() > 0))));
     }
-
-    /* GETTERS */
-    int Process::getID()
-    {
-        return _sid;
-    }
-
 
 
 
@@ -123,7 +116,7 @@
 
     void Process::setTimeout(uint32_t timeout)
     {
-        // Can not let interrupt happen 
+        // Can not let interrupt happen
         ATOMIC_START
         {
             _timeout = timeout;

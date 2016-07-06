@@ -36,6 +36,12 @@ typedef enum ProcessWarning
 #define LONGJMP_ISR_CODE -1000
 #define LONGJMP_YIELD_CODE -1001
 
+#define ALL_PRIORITY_LEVELS -1
+
+#ifndef SCHEDULER_JOB_QUEUE_SIZE
+    #define SCHEDULER_JOB_QUEUE_SIZE 20
+#endif
+
 #if defined(ARDUINO_ARCH_AVR)
     #include <setjmp.h>
     #include <util/atomic.h>

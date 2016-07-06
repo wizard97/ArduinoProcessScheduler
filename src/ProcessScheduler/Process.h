@@ -11,36 +11,48 @@ class Process
 {
     friend class Scheduler;
 public:
-    Process(Scheduler &manager, ProcPriority priority, unsigned int period,
+    Process(Scheduler &manager, ProcPriority priority, uint32_t period,
             int iterations=RUNTIME_FOREVER,
             int16_t overSchedThresh = OVERSCHEDULED_NO_WARNING);
 
-    int getID();
-    inline Scheduler &scheduler() { return _scheduler; }
+    ///////////////////// PROCESS OPERATIONS /////////////////////////
     bool add(bool enableIfNot=false);
     bool disable();
     bool enable();
     bool destroy();
 
-    inline int32_t timeToNextRun() { return (_scheduledTS + _period) - _scheduler.getCurrTS(); }
-    inline uint32_t getScheduledTS() { return _scheduledTS; } // The ts the most recent iteration should of started
-    inline uint32_t getActualRunTS() { return _actualTS; }
+    ///////////////////// GETTERS /////////////////////////
+    inline Scheduler &scheduler() { return _scheduler; }
 
+    inline uint8_t getID() { return _sid; };
     inline bool isEnabled() { return _enabled; }
     inline bool isNotDestroyed() { return _scheduler.isNotDestroyed(*this); }
+
     inline int getIterations() { return _iterations; } // might return RUNTIME_FOREVER
     inline unsigned int getPeriod() { return _period; }
 
-    inline void force() { _force = true; }
+    inline ProcPriority getPriority() { return _pLevel; }
 
-    inline void resetOverSchedWarning() { _pBehind = 0; }
+    inline int32_t timeToNextRun() { return (_scheduledTS + _period) - _scheduler.getCurrTS(); }
+    inline uint32_t getActualRunTS() { return _actualTS; }
+    inline uint32_t getScheduledTS() { return _scheduledTS; } // The ts the most recent iteration should of started
+
     inline uint16_t getOverSchedThresh() { return _overSchedThresh; }
     inline uint16_t getCurrPBehind() { return _pBehind; }
 
-    inline ProcPriority getPriority() { return _pLevel; }
+    ///////////////////// SETTERS /////////////////////////
+    inline void setIterations(int iterations) { _iterations = iterations; }
+    inline void setPeriod(uint32_t period) { _period = period; }
+    inline void force() { _force = true; }
+
+    inline void resetOverSchedWarning() { _pBehind = 0; }
+
 
 protected:
+    ///////////////////// GETTERS /////////////////////////
     inline uint32_t getStartDelay() { return _actualTS - _scheduledTS; }
+
+    ///////////////////// VIRTUAL FUNCTIONS /////////////////////////
     // Fired on creation/destroy
     virtual void setup();
     virtual void cleanup();
