@@ -80,15 +80,26 @@ protected:
     bool appendNode(Process &node); // true on success
     bool removeNode(Process &node); // true on success
     bool findNode(Process &node); // True if node exists in list
+    Process *findPrevNode(Process &node);
 
-    Process *volatile _head[NUM_PRIORITY_LEVELS];
-    Process *volatile _nextProc[NUM_PRIORITY_LEVELS];
 
     Process *_active;
     uint8_t _lastID;
     RingBuf *_queue;
 
-private:
+    struct SchedulerPriorityLevel
+    {
+        Process *head;
+        Process *next;
+    };
+    struct SchedulerPriorityLevel _pLevels[NUM_PRIORITY_LEVELS];
+
+
+/* CUSTOM COMPILE OPTIONS*/
+/*
+    bool swapNode(Process &n1, Process &n2);
+    void reOrderProcs(ProcPriority level);
+*/
 
 #ifdef _PROCESS_STATISTICS
 public:

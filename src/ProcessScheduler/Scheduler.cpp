@@ -3,7 +3,7 @@
 
 
 Scheduler::Scheduler()
-: _head{}, _nextProc{}
+: _pLevels{}
 {
     _lastID = 0;
     // Create queue
@@ -35,7 +35,7 @@ Process *Scheduler::findProcById(uint8_t id)
 {
     for (uint8_t i=0; i < NUM_PRIORITY_LEVELS; i++)
     {
-        for (Process *serv = _head[i]; serv != NULL; serv = serv->getNext())
+        for (Process *serv = _pLevels[i].head; serv != NULL; serv = serv->getNext())
         {
             if (serv->getID() == id)
                 return serv;
@@ -99,7 +99,7 @@ uint8_t Scheduler::countProcesses(int priority, bool enabledOnly)
     uint8_t count=0;
     for (uint8_t i = (priority == ALL_PRIORITY_LEVELS) ? 0 : (uint8_t)priority; i < NUM_PRIORITY_LEVELS; i++)
     {
-        for (Process *curr = _head[i]; curr != NULL; curr = curr->getNext())
+        for (Process *curr = _pLevels[i].head; curr != NULL; curr = curr->getNext())
         {
             count += enabledOnly ? curr->isEnabled() : 1;
         }
@@ -120,7 +120,7 @@ int Scheduler::run()
     {
         processQueue();
 
-        _active = _nextProc[pLevel];
+        _active = _pLevels[pLevel].next;
         if (!_active)
             continue;
 
@@ -166,17 +166,22 @@ int Scheduler::run()
 
         // Determine what to do next ///
         if (!_active->hasNext()) {
-            _nextProc[pLevel] = _head[pLevel]; // Set next to first
+#ifdef _PROCESS_REORDERING
+            if(++_pLevels[pLevel].passes >= _PROCESS_REORDERING_AGGRESSIVENESS) {
+                reOrderProcs((ProcPriority)pLevel);
+                ++_pLevels[pLevel].passes = 0;
+            }
+#endif
+            _pLevels[pLevel].next = _pLevels[pLevel].head; // Set next to first
         } else {
-            _nextProc[pLevel] = _active->getNext(); // Set next and break
+            _pLevels[pLevel].next = _active->getNext(); // Set next and break
             _active = NULL;
             break;
         }
 
+        _active = NULL;
     }
-
     processQueue();
-
     return count;
 }
 
@@ -230,7 +235,7 @@ void Scheduler::procHalt()
 {
     for (uint8_t i = 0; i < NUM_PRIORITY_LEVELS; i++)
     {
-        for (Process *curr = _head[i]; curr != NULL; curr = curr->getNext())
+        for (Process *curr = _pLevels[i].head; curr != NULL; curr = curr->getNext())
         {
             procDestroy(*curr);
         }
@@ -310,7 +315,6 @@ void Scheduler::processQueue()
 }
 
 #ifdef _PROCESS_STATISTICS
-
 bool Scheduler::updateStats()
 {
     QueableOperation op(QueableOperation::UPDATE_STATS);
@@ -331,7 +335,7 @@ void Scheduler::procUpdateStats()
 
     for (uint8_t l = 0; l < NUM_PRIORITY_LEVELS; l++)
     {
-        for (i = 0, p = _head[l]; p != NULL && i < count; p = p->getNext(), i++)
+        for (i = 0, p = _pLevels[l].head; p != NULL && i < count; p = p->getNext(), i++)
         {
             // to ensure no overflows
             sTime[i] = (p->getHistRunTime() + count/2) / count;
@@ -341,7 +345,7 @@ void Scheduler::procUpdateStats()
 
     for (uint8_t l = 0; l < NUM_PRIORITY_LEVELS; l++)
     {
-        for (i = 0, p = _head[l]; p != NULL && i < count; p = p->getNext(), i++)
+        for (i = 0, p = _pLevels[l].head; p != NULL && i < count; p = p->getNext(), i++)
         {
             // to ensure no overflows have to use double
             if (!totalTime) {
@@ -361,7 +365,7 @@ void Scheduler::handleHistOverFlow(uint8_t div)
 {
     for (uint8_t i = 0; i < NUM_PRIORITY_LEVELS; i++)
     {
-        for (Process *p = _head[i]; p != NULL; p = p->getNext())
+        for (Process *p = _pLevels[i].head; p != NULL; p = p->getNext())
         {
             p->divStats(div);
         }
@@ -400,11 +404,11 @@ bool Scheduler::appendNode(Process &node)
 
     ProcPriority p = node.getPriority();
 
-    if (!_head[p]) {
-        _head[p] = &node;
-        _nextProc[p] = &node;
+    if (!_pLevels[p].head) { // adding to head
+        _pLevels[p].head = &node;
+        _pLevels[p].next = &node;
     } else {
-        Process *next = _head[p];
+        Process *next = _pLevels[p].head; // adding not to head
         for(; next->hasNext(); next = next->getNext()); //run through list
         // Update pointers
         next->setNext(&node);
@@ -416,31 +420,105 @@ bool Scheduler::removeNode(Process &node)
 {
     ProcPriority p = node.getPriority();
 
-    if (&node == _head[p]) { // node is head
-        _head[p] = node.getNext();
+    if (&node == _pLevels[p].head) { // node is head
+        _pLevels[p].head = node.getNext();
     } else {
         // Find the previous node
-        Process *prev = _head[p];
-        for (; prev != NULL && prev->getNext() != &node; prev = prev->getNext());
+        Process *prev = findPrevNode(node);
 
-        if (!prev) return false; // previous node does not exist
+        if (!prev)
+            return false; // previous node does not exist
 
         prev->setNext(node.getNext());
     }
 
-    if (_nextProc[p] == &node)
-        _nextProc[p] = node.hasNext() ? node.getNext() : _head[p];
+    if (_pLevels[p].next == &node)
+        _pLevels[p].next = node.hasNext() ? node.getNext() : _pLevels[p].head;
 
     return true;
 }
 
-
 bool Scheduler::findNode(Process &node)
 {
-    for (Process *p = _head[node.getPriority()]; p != NULL; p = p->getNext())
+    for (Process *p = _pLevels[node.getPriority()].head; p != NULL; p = p->getNext())
     {
         if (p == &node)
             return true;
     }
     return false;
 }
+
+Process *Scheduler::findPrevNode(Process &node)
+{
+    Process *prev = _pLevels[node.getPriority()].head;
+    for (; prev != NULL && prev->getNext() != &node; prev = prev->getNext());
+    return prev;
+}
+
+/*
+void Scheduler::reOrderProcs(ProcPriority level)
+{
+    for(Process *p = _pLevels[level].head; p != NULL && p->hasNext(); p = p->getNext())
+    {
+        Process *next = p->getNext();
+
+        if (p->getAvgRunTime() > next->getAvgRunTime())
+        {
+            Serial.println("Swapping");
+            if(!swapNode(*p, *next)) //this should never fail, but to be safe
+                break;
+
+            p = next;
+        }
+    }
+}
+
+bool Scheduler::swapNode(Process &n1, Process &n2)
+{
+    if (&n1 == &n2 || n1.getPriority() != n2.getPriority())
+        return false;
+
+
+    Process *n1_prev = findPrevNode(n1);
+    Process *n2_prev = findPrevNode(n2);
+
+    if (!n1_prev) { //n1 was head
+        _pLevels[n1.getPriority()].head = &n2;
+    } else { //n1 was not head
+        n1_prev->setNext(&n2);
+    }
+
+    if (!n2_prev) { //n2 was head
+        _pLevels[n1.getPriority()].head = &n1;
+    } else { //n2 was not head
+        n2_prev->setNext(&n1);
+    }
+
+    Process *tmp = n2.getNext();
+    n2.setNext(n1.getNext());
+    n1.setNext(tmp);
+    return true;
+}
+
+bool Scheduler::removeNodeAfter(Process &prev)
+{
+    Process *toRemove = prev.getNext();
+
+    if (!toRemove)
+        return false;
+
+    prev.setNext(toRemove->getNext());
+
+    return true;
+}
+
+bool Scheduler::insertNodeAfter(Process &prev, Process &toAdd)
+{
+    Process *next = prev.getNext();
+
+    prev.setNext(&toAdd);
+    toAdd.setNext(&prev);
+
+    return true;
+}
+*/

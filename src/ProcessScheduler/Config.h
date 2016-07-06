@@ -7,13 +7,18 @@
 //#define _PROCESS_EXCEPTION_HANDLING
 
 /* Uncomment this to allow Process timing statistics functionality */
-//#define _PROCESS_STATISTICS
+#define _PROCESS_STATISTICS
 
 /* Uncomment this to use microseconds instead of milliseconds for timestamp unit (more precise) */
 //#define _MICROS_PRECISION
 
 /* The size of the scheduler job queue, */
 //increase if add(), destroy(), enable(), disable(), or updateStats() is returning false*/
+
+//#define _PROCESS_REORDERING
+
+#define _PROCESS_REORDERING_AGGRESSIVENESS 50000
+
 #define SCHEDULER_JOB_QUEUE_SIZE 20
 
 typedef enum ProcPriority
