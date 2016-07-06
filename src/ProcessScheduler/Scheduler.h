@@ -13,6 +13,8 @@ typedef struct RingBuf RingBuf;
 
 class Process;
 
+
+
 class Scheduler
 {
 
@@ -30,10 +32,10 @@ public:
     bool isNotDestroyed(Process &process);
     bool isEnabled(Process &process);
 
-    Process *getCurrProcess();
+    static Process *getActive();
     Process *findProcById(uint8_t id);
     uint8_t countProcesses(int priority = ALL_PRIORITY_LEVELS, bool enabledOnly = true);
-    uint32_t getCurrTS();
+    static uint32_t getCurrTS();
 
     int run();
 protected:
@@ -83,7 +85,7 @@ protected:
     Process *findPrevNode(Process &node);
 
 
-    Process *_active;
+    static Process *_active;
     uint8_t _lastID;
     RingBuf *_queue;
 
@@ -115,9 +117,9 @@ private:
 public:
     void raiseException(int e);
     virtual void handleException(Process &process, int e) { };
+    static jmp_buf _env; // have to do this to access it from ISR
 protected:
-    bool eDispatcher(int e);
-    jmp_buf _env;
+    bool jmpHandler(int e);
 #endif
 
 };

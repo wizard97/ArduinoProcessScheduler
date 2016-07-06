@@ -65,7 +65,11 @@
     //called on enable/disable
     void Process::onEnable() { return; }
     void Process::onDisable() { return; }
-    void Process::overScheduledHandler(uint32_t behind) { resetSchedulerWarning(); }
+    void Process::handleWarning(ProcessWarning warning)
+    {
+        if (warning == WARNING_PROC_OVERSCHEDULED)
+            resetOverSchedWarning();
+    }
 
     /*********** PRIVATE *************/
     bool Process::isPBehind(uint32_t curr)
@@ -92,9 +96,9 @@
         if (getOverSchedThresh() != OVERSCHEDULED_NO_WARNING && isPBehind(now)) {
             incrPBehind();
             if (getCurrPBehind() >= getOverSchedThresh())
-                overScheduledHandler(now - getScheduledTS());
+                handleWarning(WARNING_PROC_OVERSCHEDULED);
         } else {
-            resetSchedulerWarning();
+            resetOverSchedWarning();
         }
     }
 

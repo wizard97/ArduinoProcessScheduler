@@ -4,7 +4,11 @@
 #include <Arduino.h>
 
 /* Uncomment this to allow Exception Handling functionality */
-//#define _PROCESS_EXCEPTION_HANDLING
+#define _PROCESS_EXCEPTION_HANDLING
+
+/* Uncomment this to allow the scheduler to interrupt long running processes */
+// This requires _PROCESS_EXCEPTION_HANDLING to also be enabled
+#define _PROCESS_TIMEOUT_INTERRUPTS
 
 /* Uncomment this to allow Process timing statistics functionality */
 #define _PROCESS_STATISTICS
@@ -12,13 +16,9 @@
 /* Uncomment this to use microseconds instead of milliseconds for timestamp unit (more precise) */
 //#define _MICROS_PRECISION
 
+
 /* The size of the scheduler job queue, */
 //increase if add(), destroy(), enable(), disable(), or updateStats() is returning false*/
-
-//#define _PROCESS_REORDERING
-
-#define _PROCESS_REORDERING_AGGRESSIVENESS 50000
-
 #define SCHEDULER_JOB_QUEUE_SIZE 20
 
 typedef enum ProcPriority

@@ -1,6 +1,18 @@
 #include "Scheduler.h"
 #include "Process.h"
 
+Process *Scheduler::_active = NULL;
+jmp_buf Scheduler::_env = {};
+
+ISR(TIMER0_COMPA_vect)
+{
+    if (Scheduler::getActive()) { // routine is running
+        uint32_t timeout = Scheduler::getActive()->getTimeout();
+        if (timeout && Scheduler::getCurrTS() - Scheduler::getActive()->getActualRunTS() >= timeout)
+            longjmp(Scheduler::_env, LONGJMP_ISR_CODE);
+    }
+}
+
 
 Scheduler::Scheduler()
 : _pLevels{}
@@ -21,7 +33,7 @@ uint32_t Scheduler::getCurrTS()
     return TIMESTAMP();
 }
 
-Process *Scheduler::getCurrProcess()
+Process *Scheduler::getActive()
 {
     return _active;
 }
@@ -134,15 +146,22 @@ int Scheduler::run()
 
 #ifdef _PROCESS_EXCEPTION_HANDLING
             int ret = setjmp(_env);
+
+#ifdef _PROCESS_TIMEOUT_INTERRUPTS
+            ENABLE_SCHEDULER_ISR();
+#endif
             if (!ret) {
                 _active->service();
             } else {
-                eDispatcher(ret);
+                jmpHandler(ret);
             }
 #else
             _active->service();
 #endif
 
+#ifdef _PROCESS_TIMEOUT_INTERRUPTS
+            DISABLE_SCHEDULER_ISR();
+#endif
 
 #ifdef _PROCESS_STATISTICS
             uint32_t runTime = getCurrTS() - start;
@@ -383,12 +402,15 @@ void Scheduler::handleHistOverFlow(uint8_t div)
     }
 
 
-    bool Scheduler::eDispatcher(int e)
+    bool Scheduler::jmpHandler(int e)
     {
         if (e != 0 && _active)
         {
-            if (!_active->handleException(e))
+            if (e == LONGJMP_ISR_CODE)
+                _active->handleWarning(WARNING_PROC_TIMED_OUT);
+            else if (!_active->handleException(e))
                 handleException(*_active, e);
+
             return true;
         }
         return false;

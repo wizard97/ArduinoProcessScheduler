@@ -45,11 +45,14 @@ public:
 
     inline void force() { _force = true; }
 
-    inline void resetSchedulerWarning() { _pBehind = 0; }
+    inline void resetOverSchedWarning() { _pBehind = 0; }
     inline uint16_t getOverSchedThresh() { return _overSchedThresh; }
     inline uint16_t getCurrPBehind() { return _pBehind; }
 
     inline ProcPriority getPriority() { return _pLevel; }
+
+    // Timeout
+    virtual uint32_t getTimeout() { return 0; };
 
 protected:
     inline uint32_t getStartDelay() { return _actualTS - _scheduledTS; }
@@ -62,7 +65,7 @@ protected:
     // Process routine
     virtual void service() = 0;
     // Overscheduled warning
-    virtual void overScheduledHandler(uint32_t behind);
+    virtual void handleWarning(ProcessWarning warning);
 
 private:
     enum ProcessFlags
@@ -107,6 +110,10 @@ private:
     const ProcPriority _pLevel;
 
 
+#ifdef _PROCESS_TIMEOUT_INTERRUPTS
+
+
+#endif
 
 #ifdef _PROCESS_STATISTICS
 public:

@@ -9,6 +9,19 @@
 class Scheduler;
 class Process;
 
+typedef enum ProcessWarning
+{
+    WARNING_PROC_OVERSCHEDULED = 0,
+
+#ifdef _PROCESS_TIMEOUT_INTERRUPTS
+    WARNING_PROC_TIMED_OUT
+#endif
+} ProcessWarning;
+
+// PICK INT VALUES PEOPLE UNLIKLEY TO USE
+#define LONGJMP_ISR_CODE -1000
+#define LONGJMP_YIELD_CODE -1001
+
 #if defined(ARDUINO_ARCH_AVR)
     #include <setjmp.h>
     #include <util/atomic.h>
@@ -18,6 +31,13 @@ class Process;
     #include <avr/sleep.h>
     #define HALT_PROCESSOR() \
             do { noInterrupts(); sleep_enable(); sleep_cpu(); } while(0)
+
+    #define ENABLE_SCHEDULER_ISR() \
+            do { OCR0A = 0xAA; TIMSK0 |= _BV(OCIE0A); } while(0)
+
+
+    #define DISABLE_SCHEDULER_ISR() \
+            do { TIMSK0 &= ~_BV(OCIE0A); } while(0)
 
 
 #elif defined(ARDUINO_ARCH_ESP8266)
@@ -38,6 +58,11 @@ class Process;
 
     #define HALT_PROCESSOR() \
             ESP.deepSleep(0)
+
+    // Not supported on ESP8266
+    #define ENABLE_SCHEDULER_ISR()
+    #define DISABLE_SCHEDULER_ISR()
+
 #else
     #error “This library only supports AVR and ESP8266 Boards.”
 #endif
