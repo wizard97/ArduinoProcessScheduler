@@ -18,6 +18,20 @@ typedef enum ProcessWarning
 #endif
 } ProcessWarning;
 
+// Process period
+#define SERVICE_CONSTANTLY 0
+#define SERVICE_SECONDLY 1000
+#define SERVICE_MINUTELY 60000
+#define SERVICE_HOURLY 3600000
+
+// Number of Processs
+#define RUNTIME_FOREVER -1
+#define RUNTIME_ONCE 1
+
+#define PROCESS_NO_TIMEOUT 0
+
+#define OVERSCHEDULED_NO_WARNING 0
+
 // PICK INT VALUES PEOPLE UNLIKLEY TO USE
 #define LONGJMP_ISR_CODE -1000
 #define LONGJMP_YIELD_CODE -1001

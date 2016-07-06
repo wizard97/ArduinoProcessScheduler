@@ -4,18 +4,6 @@
 #include "Includes.h"
 #include "Scheduler.h"
 
-// Process period
-#define SERVICE_CONSTANTLY 0
-#define SERVICE_SECONDLY 1000
-#define SERVICE_MINUTELY 60000
-#define SERVICE_HOURLY 3600000
-
-// Number of Processs
-#define RUNTIME_FOREVER -1
-#define RUNTIME_ONCE 1
-
-#define OVERSCHEDULED_NO_WARNING 0
-
 class Scheduler;
 
 
@@ -50,9 +38,6 @@ public:
     inline uint16_t getCurrPBehind() { return _pBehind; }
 
     inline ProcPriority getPriority() { return _pLevel; }
-
-    // Timeout
-    virtual uint32_t getTimeout() { return 0; };
 
 protected:
     inline uint32_t getStartDelay() { return _actualTS - _scheduledTS; }
@@ -112,6 +97,12 @@ private:
 
 #ifdef _PROCESS_TIMEOUT_INTERRUPTS
 
+public:
+    inline uint32_t getTimeout() {return _timeout;}
+protected:
+    inline void setTimeout(uint32_t timeout) { _timeout = timeout; }
+private:
+    uint32_t _timeout;
 
 #endif
 

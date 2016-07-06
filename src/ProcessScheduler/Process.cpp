@@ -14,6 +14,9 @@
         this->_force = false;
         this->_overSchedThresh = overSchedThresh;
         this->_pBehind = 0;
+#ifdef _PROCESS_TIMEOUT_INTERRUPTS
+        setTimeout(PROCESS_NO_TIMEOUT);
+#endif
     }
 
 
