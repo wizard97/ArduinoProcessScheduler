@@ -410,15 +410,26 @@ void Scheduler::handleHistOverFlow(uint8_t div)
     {
         if (e != 0 && _active)
         {
-            if (e == LONGJMP_ISR_CODE)
-                _active->handleWarning(WARNING_PROC_TIMED_OUT);
-            else if (!_active->handleException(e))
-                handleException(*_active, e);
+            switch(e)
+            {
+#ifdef _PROCESS_TIMEOUT_INTERRUPTS
+                case LONGJMP_ISR_CODE:
+                    _active->handleWarning(WARNING_PROC_TIMED_OUT);
+                    break;
+#endif
+                case LONGJMP_YIELD_CODE:
+                    //no nothing
+                    break;
 
+                default:
+                    if (!_active->handleException(e))
+                        handleException(*_active, e);
+                    break;
+
+            }
             return true;
         }
         return false;
-
     }
 #endif
 

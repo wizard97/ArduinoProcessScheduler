@@ -138,6 +138,7 @@ private:
 #ifdef _PROCESS_EXCEPTION_HANDLING
 
 protected:
+    inline void yield() { _scheduler.raiseException(LONGJMP_YIELD_CODE); }
     // By default do not handle
     virtual bool handleException(int e) { return false; }
     virtual void raiseException(int e) { _scheduler.raiseException(e); }
