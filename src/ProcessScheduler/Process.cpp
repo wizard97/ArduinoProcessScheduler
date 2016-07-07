@@ -51,6 +51,25 @@
             (getIterations() == RUNTIME_FOREVER || getIterations() > 0))));
     }
 
+    void Process::setIterations(int iterations)
+    {
+        ATOMIC_START
+        {
+            _iterations = iterations;
+        }
+        ATOMIC_END
+    }
+
+
+    void Process::setPeriod(uint32_t period)
+    {
+        ATOMIC_START
+        {
+            _period = period;
+        }
+        ATOMIC_END
+    }
+
 
 
     /*********** PROTECTED *************/

@@ -256,6 +256,7 @@ void Scheduler::procAdd(Process &process)
 
 void Scheduler::procHalt()
 {
+
     for (uint8_t i = 0; i < NUM_PRIORITY_LEVELS; i++)
     {
         for (Process *curr = _pLevels[i].head; curr != NULL; curr = curr->getNext())
@@ -263,6 +264,8 @@ void Scheduler::procHalt()
             procDestroy(*curr);
         }
     }
+
+    delay(100);
 
     HALT_PROCESSOR();
 }

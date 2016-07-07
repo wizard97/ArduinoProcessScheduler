@@ -41,8 +41,8 @@ public:
     inline uint16_t getCurrPBehind() { return _pBehind; }
 
     ///////////////////// SETTERS /////////////////////////
-    inline void setIterations(int iterations) { _iterations = iterations; }
-    inline void setPeriod(uint32_t period) { _period = period; }
+    void setIterations(int iterations);
+    void setPeriod(uint32_t period);
     inline void force() { _force = true; }
 
     inline void resetOverSchedWarning() { _pBehind = 0; }
