@@ -3,23 +3,31 @@
 
     /*********** PUBLIC *************/
     Process::Process(Scheduler &scheduler, ProcPriority priority, uint32_t period,
-            int iterations, int16_t overSchedThresh)
+            int iterations, uint16_t overSchedThresh)
     : _scheduler(scheduler), _pLevel(priority)
     {
         this->_enabled = false;
         this->_period = period;
         this->_iterations = iterations;
-        this->_scheduledTS = _scheduler.getCurrTS();
-        this->_actualTS = _scheduler.getCurrTS();
         this->_force = false;
         this->_overSchedThresh = overSchedThresh;
-        this->_pBehind = 0;
+        resetTimeStamps();
+
 #ifdef _PROCESS_TIMEOUT_INTERRUPTS
         setTimeout(PROCESS_NO_TIMEOUT);
 #endif
     }
 
-
+    void Process::resetTimeStamps()
+    {
+        ATOMIC_START
+        {
+        this->_scheduledTS = _scheduler.getCurrTS();
+        this->_actualTS = _scheduler.getCurrTS();
+        this->_pBehind = 0;
+        }
+        ATOMIC_END
+    }
 
     bool Process::disable()
     {

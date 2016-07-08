@@ -12,7 +12,7 @@ ISR(TIMER0_COMPA_vect)
 {
     if (Scheduler::getActive()) { // routine is running
         uint32_t timeout = Scheduler::getActive()->getTimeout();
-        if (timeout && Scheduler::getCurrTS() - Scheduler::getActive()->getActualRunTS() >= timeout)
+        if (timeout != PROCESS_NO_TIMEOUT && Scheduler::getCurrTS() - Scheduler::getActive()->getActualRunTS() >= timeout)
             longjmp(Scheduler::_env, LONGJMP_ISR_CODE);
     }
 }
@@ -229,6 +229,7 @@ void Scheduler::procDisable(Process &process)
 void Scheduler::procEnable(Process &process)
 {
     if (!process.isEnabled() && isNotDestroyed(process)) {
+        process.resetTimeStamps();
         process.onEnable();
         process.setEnabled();
     }
@@ -252,6 +253,7 @@ void Scheduler::procRestart(Process &process)
         procDisable(process);
         process.cleanup();
     }
+    process.resetTimeStamps();
     process.setup();
     procEnable(process);
 }
@@ -261,6 +263,7 @@ void Scheduler::procAdd(Process &process)
 {
     if (!isNotDestroyed(process)) {
         for (; process.getID() == 0 || findProcById(process.getID()) != NULL; process.setID(++_lastID)); // Find a free id
+        process.resetTimeStamps();
         process.setup();
         procEnable(process);
         appendNode(process);

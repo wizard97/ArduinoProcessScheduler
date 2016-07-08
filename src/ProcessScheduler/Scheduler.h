@@ -17,7 +17,7 @@ public:
     ~Scheduler();
 
 /*************** Methods to Perform Actions on Processes ****************/
-// Note: These can also be called directly on the Process object
+// NOTE: These can also be called directly on the Process object
 // example process.add()
 
     /**
@@ -54,7 +54,7 @@ public:
     * Remove a process from the scheduling chain
     * If it is not part of chain, do nothing
     * This will trigger the Processes cleanup() method
-    * Note: If it is currently enabled, disable() will automatically be called first
+    * NOTE: If it is currently enabled, disable() will automatically be called first
     *
     * @return: True on success
     */
@@ -153,7 +153,7 @@ public:
     /**
     * This will update the Process.getLoadPercent() method
     * It will estimate the % CPU time for all processes
-    * Note: This will simply add this task to the scheduler job queue
+    * NOTE: This will simply add this task to the scheduler job queue
     * The update will not happen until the scheduler gets a chance to process the request
     *
     * @return: True on success
@@ -168,7 +168,7 @@ public:
     /**
     * Raise Exception with code e inside a Process service routine
     * Execution will stop immediatley, and the processes handleException() will be called
-    * Note: DO NOT CALL THIS FROM OUTSIDE A PROCESS SERVICE ROUTINE
+    * NOTE: DO NOT CALL THIS FROM OUTSIDE A PROCESS SERVICE ROUTINE
     * @return: True on success
     */
     void raiseException(int e);
@@ -180,7 +180,10 @@ public:
 
 protected:
 #ifdef _PROCESS_EXCEPTION_HANDLING
-        virtual void handleException(Process &process, int e) { };
+    /*
+    * Handle uncaught Process exceptions from Process process with Exception code e
+    */
+    virtual void handleException(Process &process, int e) { };
 #endif
     // Inner queue object class to queue scheduler jobs
     class QueableOperation
