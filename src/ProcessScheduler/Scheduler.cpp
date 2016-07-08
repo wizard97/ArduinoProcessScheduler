@@ -241,6 +241,7 @@ void Scheduler::procDestroy(Process &process)
         procDisable(process);
         process.cleanup();
         removeNode(process);
+        process.setID(0);
     }
 }
 
