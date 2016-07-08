@@ -19,6 +19,7 @@ public:
     bool disable(Process &process);
     bool enable(Process &process);
     bool destroy(Process &process);
+    bool restart(Process &process);
     bool halt();
 
     uint8_t getID(Process &process);
@@ -45,6 +46,7 @@ protected:
             DESTROY_SERVICE,
             DISABLE_SERVICE,
             ENABLE_SERVICE,
+            RESTART_SERVICE,
             HALT,
 #ifdef _PROCESS_STATISTICS
             UPDATE_STATS,
@@ -69,6 +71,7 @@ protected:
     void procEnable(Process &process);
     void procDestroy(Process &process);
     void procAdd(Process &process);
+    void procRestart(Process &process);
     void procHalt();
 
     void processQueue();

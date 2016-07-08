@@ -43,6 +43,11 @@
         return _scheduler.add(*this, enableIfNot);
     }
 
+    bool Process::restart()
+    {
+        return _scheduler.restart(*this);
+    }
+
 
     bool Process::needsServicing(uint32_t start)
     {

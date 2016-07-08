@@ -20,6 +20,7 @@ public:
     bool disable();
     bool enable();
     bool destroy();
+    bool restart();
 
     ///////////////////// GETTERS /////////////////////////
     inline Scheduler &scheduler() { return _scheduler; }

@@ -98,6 +98,13 @@ bool Scheduler::destroy(Process &process)
     return op.queue(_queue);
 }
 
+
+bool Scheduler::restart(Process &process)
+{
+    QueableOperation op(&process, QueableOperation::RESTART_SERVICE);
+    return op.queue(_queue);
+}
+
 bool Scheduler::halt()
 {
     QueableOperation op(QueableOperation::HALT);
@@ -238,6 +245,17 @@ void Scheduler::procDestroy(Process &process)
 }
 
 
+void Scheduler::procRestart(Process &process)
+{
+    if (isNotDestroyed(process)) {
+        procDisable(process);
+        process.cleanup();
+    }
+    process.setup();
+    procEnable(process);
+}
+
+
 void Scheduler::procAdd(Process &process)
 {
     if (!isNotDestroyed(process)) {
@@ -322,6 +340,10 @@ void Scheduler::processQueue()
 
             case QueableOperation::DESTROY_SERVICE:
                 procDestroy(*op.getProcess());
+                break;
+
+            case QueableOperation::RESTART_SERVICE:
+                procRestart(*op.getProcess());
                 break;
 
             case QueableOperation::HALT:
