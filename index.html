@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>ArduinoProcessScheduler by wizard97</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">ArduinoProcessScheduler</h1>
+      <h2 class="project-tagline">An Arduino Object Oriented Service Scheduler to Replace Them All</h2>
+      <a href="https://github.com/wizard97/ArduinoProcessScheduler" class="btn">View on GitHub</a>
+      <a href="https://github.com/wizard97/ArduinoProcessScheduler/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/wizard97/ArduinoProcessScheduler/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+      <h1>
+<a id="arduinoprocessscheduler" class="anchor" href="#arduinoprocessscheduler" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>ArduinoProcessScheduler</h1>
+
+<p>An Arduino Object Oriented Cooperative Process Scheduler to Replace Them All</p>
+
+<h2>
+<a id="features" class="anchor" href="#features" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Features</h2>
+
+<ul>
+<li>Fine Grained Control Over How Often a Process Runs (Periodically, Iterations, or as Often as Possible)</li>
+<li>Exception Handling (wait what?!)</li>
+<li>Atomicity Support</li>
+<li>Dynamically Add/Remove and Enable/Disable Processes</li>
+<li>Automatic Process Monitoring Statistics (Automatically calculates % CPU time for service)</li>
+<li>Truly object oriented (a Process is no longer just a callback function like other libraries)</li>
+</ul>
+
+<h2>
+<a id="basic-usage" class="anchor" href="#basic-usage" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Basic Usage</h2>
+
+<p>There are two classes to worry about: <code>Scheduler</code> and <code>Process</code>.</p>
+
+<h3>
+<a id="class-scheduler" class="anchor" href="#class-scheduler" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Class <code>Scheduler</code>:</h3>
+
+<p>A <code>Scheduler</code> oversees and manages <code>Processes</code>. There should only be one <code>Scheduler</code> in your project. Inside of <code>void loop()</code>, the scheduler's <code>run()</code> method should be repeatedly called.</p>
+
+<h3>
+<a id="class-process" class="anchor" href="#class-process" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Class <code>Process</code>:</h3>
+
+<p>A service can be thought of as job or a task that needs to be run at certain times. Each Process had be scheduled to run Periodically
+Constantly, or Periodically/Constantly with a set number of run iterations.</p>
+
+<p>Each project will have multiple services, here are some examples of <code>Processes</code>:</p>
+
+<ul>
+<li>A Process to handle user input</li>
+<li>A Process to run a basic webserver</li>
+<li>A Process to update a display</li>
+</ul>
+
+<p><code>Process</code> is a base class that should be extended to handle your particular Process (such as the examples mentioned above). The scheduler's will call the following virtual function as an entry point when it is time for you service to run:</p>
+
+<pre><code>    virtual void service();
+</code></pre>
+
+<p>From here your <code>service()</code> routine is expected to be non-blocking, and return from <code>service()</code> as soon as possible (that means no long <code>delay()</code>'s). Fortunately, since your service routine is a method inside a class, you can store the state of your service in custom class attributes before returning, so you know where you left off when the scheduler calls your Process again. As soon you return from <code>service()</code>, control is transferred back to the Scheduler (it will also be transferred back if you raise an Exception--advanced).</p>
+
+<p>Additionally, each Process inherits the following virtual functions which are called by the <code>Scheduler</code> at the appropriate times. Note you are guaranteed that only one of these methods will exist in the call stack at once, even if an interrupt fires trying to modify this Process at the same time (such as with <code>add()</code>, <code>destroy()</code>, <code>enable()</code>, or <code>disable()</code>). This also includes the <code>service()</code> method mentioned above. You do not have to worry about concurrency!</p>
+
+<p><strong>Thanks to the magic of virtual functions, you don't have to impliment any of these unless your particular Process needs them:</strong></p>
+
+<pre><code>    virtual void setup()
+    virtual void cleanup()
+
+    virtual void onEnable()
+    virtual void onDisable()
+
+    virtual void overScheduledHandler(uint32_t behind)
+</code></pre>
+
+<h4>
+<a id="setup" class="anchor" href="#setup" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><code>setup()</code>
+</h4>
+
+<p>This method is called by the scheduler when the Process is being added to the scheduling chain with <code>add()</code>, it is guaranteed to only be called once when a Process not part of the scheduling chain is being added (<code>add()</code>). Keep in mind it will still be called if the Process is removed from the scheduling chain with <code>destroy()</code>, then added again with <code>add()</code>.</p>
+
+<h4>
+<a id="cleanup" class="anchor" href="#cleanup" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><code>cleanup()</code>
+</h4>
+
+<p>This is only called once when a <code>Process</code> part of the scheduling chain is being removed from the scheduling chain with <code>destroy()</code>. This method should undo whatever was done in <code>setup()</code>. You are guaranteed it will not be called unless <code>setup()</code> was called previously.</p>
+
+<h4>
+<a id="onenable" class="anchor" href="#onenable" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><code>onEnable()</code>
+</h4>
+
+<p>This method is called only once when a disabled task is being enabled with <code>enable()</code>.</p>
+
+<h4>
+<a id="ondisable" class="anchor" href="#ondisable" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><code>onDisable()</code>
+</h4>
+
+<p>This method is called only once when a enabled task is being disabled with <code>disable()</code>. You are guaranteed it will not be called unless <code>onEnable()</code> was called previously. It should undo whatever <code>onEnable()</code> did.</p>
+
+<h4>
+<a id="overscheduledhandleruint32_t-behind" class="anchor" href="#overscheduledhandleruint32_t-behind" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><code>overScheduledHandler(uint32_t behind)</code>
+</h4>
+
+<p>This method is called if the scheduler can not meet the current set period for the Process and is falling behind. The scheduler will pass in variable <code>behind</code> containing how many milliseconds (or microseconds) behind the scheduler is with this task. Inside this method might be a good time increase the period between when this task is run, then call <code>resetSchedulerWarning()</code> to clear the warning.</p>
+
+<h2>
+<a id="api" class="anchor" href="#api" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>API</h2>
+
+<h3>
+<a id="scheduler-methods" class="anchor" href="#scheduler-methods" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><code>Scheduler</code> Methods:</h3>
+
+<h4>
+<a id="constructor" class="anchor" href="#constructor" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Constructor</h4>
+
+<pre><code>Scheduler()
+</code></pre>
+
+<p>Create a Scheduler object.</p>
+
+<p><strong>Returns:</strong> <code>Scheduler</code></p>
+
+<hr>
+
+<h4>
+<a id="run" class="anchor" href="#run" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>run()</h4>
+
+<pre><code>run()
+</code></pre>
+
+<p>This method runs one pass through the scheduler. It is the heart of the scheaduler, this method should be called repeatedly inside of <code>void loop()</code></p>
+
+<p><strong>Returns:</strong> <code>void</code></p>
+
+<hr>
+
+<h4>
+<a id="getid" class="anchor" href="#getid" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>getID()</h4>
+
+<pre><code>getID(Process &amp;service)
+</code></pre>
+
+<p>Get the unique id for the service. Same as <code>service.getID()</code>.</p>
+
+<p><strong>Returns:</strong> <code>uint8_t</code></p>
+
+<hr>
+
+<h4>
+<a id="isrunningprocess" class="anchor" href="#isrunningprocess" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>isRunningProcess()</h4>
+
+<pre><code>isRunningProcess(Process &amp;service)
+</code></pre>
+
+<p>Determine if the scheduler is in the middle of running this service. Same as calling <code>service.isRunningProcess()</code></p>
+
+<p><strong>Returns:</strong> <code>bool</code></p>
+
+<hr>
+
+<h4>
+<a id="isenabled" class="anchor" href="#isenabled" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>isEnabled()</h4>
+
+<pre><code>isEnabled(Process &amp;service)
+</code></pre>
+
+<p>Determines if this service is enabled. Same as calling <code>service.isEnabled()</code></p>
+
+<p><strong>Returns:</strong> <code>bool</code></p>
+
+<hr>
+
+<h4>
+<a id="getcurrprocess" class="anchor" href="#getcurrprocess" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>getCurrProcess()</h4>
+
+<pre><code>getCurrProcess()
+</code></pre>
+
+<p>Get pointer to the current service being run by the scheduler. Return NULL if no service being currently run.</p>
+
+<p><strong>Returns:</strong> <code>Process*</code></p>
+
+<hr>
+
+<h4>
+<a id="countprocesses" class="anchor" href="#countprocesses" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>countProcesses()</h4>
+
+<pre><code>countProcesses(bool enabledOnly = true)
+</code></pre>
+
+<p>Get number of servies in the scheduler's chain. If enabledOnly is true, only the enabled Processes will be counted.</p>
+
+<p><strong>Returns:</strong> <code>uint8_t</code></p>
+
+<hr>
+
+<h4>
+<a id="getcurrts" class="anchor" href="#getcurrts" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>getCurrTS()</h4>
+
+<pre><code>getCurrTS()
+</code></pre>
+
+<p>Returns the current internal timestamp. Either will be the same as <code>millis()</code> or <code>micros()</code></p>
+
+<p><strong>Returns:</strong> <code>uint32_t</code></p>
+
+<hr>
+
+<h4>
+<a id="add" class="anchor" href="#add" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>add()</h4>
+
+<pre><code>add (Process &amp;service))
+</code></pre>
+
+<p>Add the service to the scheduler, same as calling <code>service.add()</code>. Note, this will trigger the service's <code>setup()</code> method to fire. This method can only fail inside an interrupt routine, particularly when an interrupt interrupts any call to either <code>add()</code> or <code>remove()</code>. It will also fail if the service is already added.</p>
+
+<p><strong>Returns:</strong> type <code>SchedulerAction</code>, <code>ACTION_NONE</code> on failure, <code>ACTION_SUCCESS</code> on success.</p>
+
+<hr>
+
+<h4>
+<a id="destroy" class="anchor" href="#destroy" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>destroy()</h4>
+
+<pre><code>destroy (Process &amp;service))
+</code></pre>
+
+<p>Remove the service from the scheduler. Same as calling <code>service.destroy()</code>. Note, this will trigger the service's <code>cleanup()</code> method to fire. If the service is not disabled, it will first call <code>disable()</code>. This method can only fail inside an interrupt routine, particularly when an interrupt interrupts any call to either <code>add()</code> or <code>remove()</code>. It will first try and QUEUE the request for later, before failing. It will also fail if the service is already destroyed.</p>
+
+<p><strong>Returns:</strong> type <code>SchedulerAction</code>, <code>ACTION_NONE</code> on failure, <code>ACTION_QUEUED</code> on Queuing it, <code>ACTION_SUCCESS</code> on success.</p>
+
+<hr>
+
+<h4>
+<a id="enable" class="anchor" href="#enable" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>enable()</h4>
+
+<pre><code>enable (Process &amp;service))
+</code></pre>
+
+<p>Enable a service, same as calling <code>service.enable()</code>. Note, this will trigger the service's <code>onEnable()</code> method to fire. This method call will always succeed if it was not called on itself from a method inside of this service. If it was, the scheduler will queue the request. Also, the request will fail if the service is already enabled or is destroyed.</p>
+
+<p><strong>Returns:</strong> type <code>SchedulerAction</code>, <code>ACTION_NONE</code> on failure, <code>ACTION_QUEUED</code> on Queuing it, <code>ACTION_SUCCESS</code> on success.</p>
+
+<hr>
+
+<h4>
+<a id="disable" class="anchor" href="#disable" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>disable()</h4>
+
+<pre><code>disable (Process &amp;service))
+</code></pre>
+
+<p>Disable a service, same as calling <code>service.disable()</code>. Note, this will trigger the service's <code>onDisable()</code> method to fire. This method call will always succeed if it was not called on itself from a method inside of this service. If it was, the scheduler will queue the request. Also, the request will fail if the service is already enabled or is destroyed.</p>
+
+<p><strong>Returns:</strong> type <code>SchedulerAction</code>, <code>ACTION_NONE</code> on failure, <code>ACTION_QUEUED</code> on Queuing it, <code>ACTION_SUCCESS</code> on success.</p>
+
+<hr>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/wizard97/ArduinoProcessScheduler">ArduinoProcessScheduler</a> is maintained by <a href="https://github.com/wizard97">wizard97</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
