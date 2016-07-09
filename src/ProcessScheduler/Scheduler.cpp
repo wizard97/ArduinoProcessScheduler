@@ -443,7 +443,7 @@ void Scheduler::handleHistOverFlow(uint8_t div)
             {
 #ifdef _PROCESS_TIMEOUT_INTERRUPTS
                 case LONGJMP_ISR_CODE:
-                    _active->handleWarning(WARNING_PROC_TIMED_OUT);
+                    _active->handleWarning(ERROR_PROC_TIMED_OUT);
                     break;
 #endif
                 case LONGJMP_YIELD_CODE:

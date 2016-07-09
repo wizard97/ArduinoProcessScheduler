@@ -17,7 +17,7 @@ typedef enum ProcessWarning
 #ifdef _PROCESS_TIMEOUT_INTERRUPTS
     // The scheduler interrupted your process service routine because it was taking longer than timeout set
     // This will likley leave you Process in an unknown state, perhaps call restart()
-    WARNING_PROC_TIMED_OUT
+    ERROR_PROC_TIMED_OUT
 #endif
 } ProcessWarning;
 
