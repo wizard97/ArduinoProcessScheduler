@@ -97,6 +97,11 @@
     {
         if (warning == WARNING_PROC_OVERSCHEDULED)
             resetOverSchedWarning();
+
+#ifdef _PROCESS_TIMEOUT_INTERRUPTS
+        else if (warning == ERROR_PROC_TIMED_OUT)
+            restart(); // default by restarting it
+#endif
     }
 
     /*********** PRIVATE *************/
