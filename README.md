@@ -1,21 +1,39 @@
 # ArduinoProcessScheduler
 An Cooperative Arduino Object Oriented Cooperative Process Scheduler to Replace Them All
 
+## What is this?
+As your arduino projects get more complicated, you will begin to see the need for multitasking, or at least appear to multitask. Perhaps you want to check if a button was pressed as often as you can, but you only want to update a display once every second. Trying to do this on your own can quickly turn into overwhelming spagetti code involving `millis()`. `ArduinoProcessScheduler` seeks to simplify this. Simply create your custom Process that needs to be serviced at certain times, and let the scheduler handle the rest.
+
+## Why this one?
+
+Here are some similar popular libraries that inspired this one:
+- [TaskScheduler](https://github.com/arkhipenko/TaskScheduler)
+- [Scheduler](https://github.com/arduino-libraries/Scheduler)
+- [Arduino-Scheduler](https://github.com/mikaelpatel/Arduino-Scheduler)
+
+### What is wrong with them?
+
+1. They all treat processes/tasks as just callback functions. 
+  1. Forces you to use ugly global and/or static function variables to track process state.
+  2. Limits you to one instance of a process, or lots of copy & paste.
+  3. Impossible to truly dynamically create new processes, you are really just enabling/disabling a callback function.
+2. Preemptive schedulers must split stack between all processes
+  1. With 2K or RAM and 8 processes, preemptive scheduler could at most equally give each Process 2k/8 = 256 Bytes of RAM.
+3. No concurrency protection (not interrupt safe)
+  1. What if an interrupt fires an tries to disable a process while it is running?
+
+
 ## Features
-- Fine Grained Control Over How Often a Process Runs (Periodically, Iterations, or as Often as Possible)
+- Control Over How Often a Process Runs (Periodically, Iterations, or as Often as Possible)
 - Process Priority Levels (Easily make custom levels as well)
 - Interrupt safe (add, disable, destroy, etc.. processes from interrupt routines)
-- Process concurrency protection (Guarantees your process to be in a valid state when performing actions on it)
+- Process concurrency protection (Process will always be in a valid state)
 - Dynamically Add/Remove and Enable/Disable Processes
-- Easily spawn new processes from within running processes
-- Automatic Process Monitoring Statistics (Automatically calculates % CPU time for process)
-- Truly object oriented (a Process is no longer just a callback function like other libraries, but its own object)
+- Spawn new processes from within running processes
+- Automatic Process Monitoring Statistics (calculates % CPU time for process)
+- Truly object oriented (a Process is its own object)
 - Exception Handling (wait what?!)
 - Scheduler can automatically interrupt stuck processes
-
-## Important Notes
-- This is not a preemptive scheduler! However by not being one, processes get to use the entire stack when they run.
-- This library was inspired from this [TaskScheduler](https://github.com/arkhipenko/TaskScheduler) library.
 
 ## Supported Platfroms
 - AVR
