@@ -24,11 +24,14 @@ Here are some similar popular libraries that inspired this one:
 
 
 ## Features
+### Basic
 - Control Over How Often a Process Runs (Periodically, Iterations, or as Often as Possible)
 - Process Priority Levels (Easily make custom levels as well)
+- Dynamically Add/Remove and Enable/Disable Processes
 - Interrupt safe (add, disable, destroy, etc.. processes from interrupt routines)
 - Process concurrency protection (Process will always be in a valid state)
-- Dynamically Add/Remove and Enable/Disable Processes
+
+### Advanced
 - Spawn new processes from within running processes
 - Automatic Process Monitoring Statistics (calculates % CPU time for process)
 - Truly object oriented (a Process is its own object)
