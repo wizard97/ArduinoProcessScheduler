@@ -46,6 +46,12 @@ Here are some similar popular libraries that inspired this one:
 ## Usage 
 See [Wiki](https://github.com/wizard97/ArduinoProcessScheduler/wiki)
 
+## Contributing
+I welcome any contributions! Here are some ideas:
+- Process signaling
+- Built in process ownership (Library tracks who owns a Process)
+- More advanced Process statistics monitoring
+
 
 ## License
 MIT.
