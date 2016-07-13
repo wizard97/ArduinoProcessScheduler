@@ -434,6 +434,11 @@ void Scheduler::handleHistOverFlow(uint8_t div)
         longjmp(_env, e);
     }
 
+    void Scheduler::handleException(Process &process, int e)
+    {
+        process.restart();
+    }
+
 
     bool Scheduler::jmpHandler(int e)
     {
