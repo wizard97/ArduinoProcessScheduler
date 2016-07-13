@@ -46,6 +46,8 @@ Here are some similar popular libraries that inspired this one:
 ## Install & Usage 
 See [Wiki](https://github.com/wizard97/ArduinoProcessScheduler/wiki)
 
+NOTE: Don't forget to install this [RingBuf](https://github.com/wizard97/ArduinoRingBuffer) library dependency!
+
 ## Contributing
 I welcome any contributions! Here are some ideas:
 - Process signaling
