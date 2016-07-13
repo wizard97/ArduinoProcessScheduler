@@ -43,7 +43,7 @@ Here are some similar popular libraries that inspired this one:
 - ESP8266 (No exception handling or process timeouts)
 
 
-## Usage 
+## Install & Usage 
 See [Wiki](https://github.com/wizard97/ArduinoProcessScheduler/wiki)
 
 ## Contributing
