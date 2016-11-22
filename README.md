@@ -50,7 +50,8 @@ NOTE: Don't forget to install this [RingBuf](https://github.com/wizard97/Arduino
 
 ## Contributing
 I welcome any contributions! Here are some ideas:
-- Process signaling
+- Built in logging
+- Built in timers
 - Built in process ownership (Library tracks who owns a Process)
 - More advanced Process statistics monitoring
 - Any Examples!
