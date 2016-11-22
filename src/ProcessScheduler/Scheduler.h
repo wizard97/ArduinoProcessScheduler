@@ -62,11 +62,13 @@ public:
 
     /**
     * Same as calling destroy(), add(), and enable() at once with less overhead
-    * NOTE: You are restarting the Process, not resetting the settings that govern the operation of the process (iterations, priority, period, etc...).
-    * The the initial set iterations, priority, period, etc... (set via constructor arguments) will not be reset to how they were when the
-    * process was created.
+    * NOTE: You are restarting the Process, not resetting the settings that govern the operation
+    * of the process (iterations, priority, period, etc...).
     *
-    * If these have changed and you want to change them back, you will have to call the appropriate setters (ex: proc.setIterations(100);)
+    * The the initial set iterations, priority, period, etc... (set via constructor arguments) 
+    * will not be reset to how they were when the process was created. If these have changed 
+    * and you want to change them back, you will have to call the appropriate setters 
+    * (ex: proc.setIterations(100);)
     *
     * @return: True on success
     */
