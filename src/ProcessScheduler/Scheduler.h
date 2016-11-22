@@ -61,7 +61,7 @@ public:
     bool destroy(Process &process);
 
     /**
-    * Same as calling destroy() and add() with less overhead
+    * Same as calling destroy(), add(), and enable() at once with less overhead
     *
     * @return: True on success
     */
