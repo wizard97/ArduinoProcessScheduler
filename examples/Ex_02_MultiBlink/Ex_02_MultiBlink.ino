@@ -25,6 +25,7 @@ public:
         }
 
 protected:
+    //setup the pins
     virtual void setup()
     {
       pinMode(_pin, OUTPUT);
@@ -37,6 +38,20 @@ protected:
     {
       pinMode(_pin, INPUT);
       _pinState = LOW;
+    }
+    
+    //LEDs should be off when disabled
+    virtual void onDisable()
+    {
+      _pinState = LOW;
+      digitalWrite(_pin, _pinState);
+    }
+    
+    //Start the LEDs on
+    virtual void onEnable()
+    {
+      _pinState = HIGH;
+      digitalWrite(_pin, _pinState);
     }
 
     // Create our service routine
