@@ -13,7 +13,7 @@ Here are some similar popular libraries that inspired this one:
 
 ### What is wrong with them?
 
-1. They all treat processes/tasks as just callback functions. 
+1. They all treat processes/tasks as just callback functions.
   1. Forces you to use ugly global and/or static function variables to track process state.
   2. Limits you to one instance of a process, or lots of copy & paste.
   3. Impossible to truly dynamically create new processes, you are really just enabling/disabling a callback function.
@@ -43,10 +43,10 @@ Here are some similar popular libraries that inspired this one:
 - ESP8266 (No exception handling or process timeouts)
 
 
-## Install & Usage 
+## Install & Usage
 See [Wiki](https://github.com/wizard97/ArduinoProcessScheduler/wiki)
 
-NOTE: Don't forget to install this [RingBuf](https://github.com/wizard97/ArduinoRingBuffer) library dependency!
+NOTE: Don't forget to install this [RingBufCPP](https://github.com/wizard97/Embedded_RingBuf_CPP) library dependency!
 
 ## Contributing
 I welcome any contributions! Here are some ideas:

@@ -22,14 +22,11 @@ Scheduler::Scheduler()
 : _pLevels{}
 {
     _lastID = 0;
-    // Create queue
-    _queue = RingBuf_new(sizeof(QueableOperation), SCHEDULER_JOB_QUEUE_SIZE);
 }
 
 Scheduler::~Scheduler()
 {
     processQueue();
-    RingBuf_delete(_queue);
 }
 
 uint32_t Scheduler::getCurrTS()
@@ -294,7 +291,7 @@ void Scheduler::procHalt()
 
 
 /* Queue object */
-// This is so ugly, stupid namespace crap
+// This is so ugly, stupid c++ namespace crap
 Scheduler::QueableOperation::QueableOperation() : _process(NULL), _operation(static_cast<uint8_t>(NONE)) {}
 
 Scheduler::QueableOperation::QueableOperation(Scheduler::QueableOperation::QueableOperation::OperationType op)
@@ -307,15 +304,20 @@ Process *Scheduler::QueableOperation::getProcess()
 {
     return _process;
 }
+// Copy constructor
+Scheduler::QueableOperation Scheduler::QueableOperation::operator = (const QueableOperation &qo)
+{
+    return Scheduler::QueableOperation(qo._process, static_cast<QueableOperation::OperationType>(qo._operation));
+}
 
 Scheduler::QueableOperation::QueableOperation::OperationType Scheduler::QueableOperation::getOperation()
 {
     return static_cast<Scheduler::QueableOperation::QueableOperation::OperationType>(_operation);
 }
 
-bool Scheduler::QueableOperation::queue(RingBuf *queue)
+bool Scheduler::QueableOperation::queue(RingBufCPP<QueableOperation, SCHEDULER_JOB_QUEUE_SIZE> &queue)
 {
-    return queue->add(queue, this) >= 0;
+    return queue.add(*this) >= 0;
 }
 
 /* end Queue object garbage */
@@ -324,10 +326,11 @@ bool Scheduler::QueableOperation::queue(RingBuf *queue)
 //Only call when there is guarantee this is not running in another call frame
 void Scheduler::processQueue()
 {
-    while(!_queue->isEmpty(_queue)) // Empty Queue
+    while(!_queue.isEmpty()) // Empty Queue
     {
         QueableOperation op;
-        _queue->pull(_queue, &op);
+        _queue.pull(&op);
+
         switch (op.getOperation())
         {
             case QueableOperation::ENABLE_SERVICE:

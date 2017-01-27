@@ -65,9 +65,9 @@ public:
     * NOTE: You are restarting the Process, not resetting the settings that govern the operation
     * of the process (iterations, priority, period, etc...).
     *
-    * The the initial set iterations, priority, period, etc... (set via constructor arguments) 
-    * will not be reset to how they were when the process was created. If these have changed 
-    * and you want to change them back, you will have to call the appropriate setters 
+    * The the initial set iterations, priority, period, etc... (set via constructor arguments)
+    * will not be reset to how they were when the process was created. If these have changed
+    * and you want to change them back, you will have to call the appropriate setters
     * (ex: proc.setIterations(100);)
     *
     * @return: True on success
@@ -215,12 +215,14 @@ protected:
         QueableOperation(OperationType op);
         QueableOperation(Process *serv, OperationType op);
 
+        QueableOperation operator = (const QueableOperation &qo);
+
         Process *getProcess();
         OperationType getOperation();
-        bool queue(RingBuf *queue);
+        bool queue(RingBufCPP<QueableOperation, SCHEDULER_JOB_QUEUE_SIZE> &queue);
 
     private:
-        Process *_process;
+        Process *const _process;
         const uint8_t _operation;
     };
 
@@ -257,7 +259,7 @@ protected:
 
     static Process *_active; // needs to be static for access in ISR
     uint8_t _lastID;
-    RingBuf *_queue;
+    RingBufCPP<QueableOperation, SCHEDULER_JOB_QUEUE_SIZE> _queue;
 
     struct SchedulerPriorityLevel
     {
