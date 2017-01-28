@@ -3,11 +3,14 @@
 
 #include "Includes.h"
 
-typedef struct RingBuf RingBuf;
+struct SchedulerPriorityLevel
+{
+    Process *head;
+    Process *next;
+};
+
 
 class Process;
-
-
 
 class Scheduler
 {
@@ -147,6 +150,10 @@ public:
     */
     static uint32_t getCurrTS();
 
+
+    const SchedulerPriorityLevel *getPLevels();
+
+
     /**
     * Run one pass through the scheduler, call this repeatedly in your void loop()
     *
@@ -261,12 +268,8 @@ protected:
     uint8_t _lastID;
     RingBufCPP<QueableOperation, SCHEDULER_JOB_QUEUE_SIZE> _queue;
 
-    struct SchedulerPriorityLevel
-    {
-        Process *head;
-        Process *next;
-    };
-    struct SchedulerPriorityLevel _pLevels[NUM_PRIORITY_LEVELS];
+
+    SchedulerPriorityLevel _pLevels[NUM_PRIORITY_LEVELS];
 
 
 /* CUSTOM COMPILE OPTIONS*/

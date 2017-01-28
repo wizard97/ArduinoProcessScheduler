@@ -9,6 +9,7 @@
 class Scheduler;
 class Process;
 
+
 typedef enum ProcessWarning
 {
     // This Process is scheduled to often
@@ -44,6 +45,7 @@ typedef enum ProcessWarning
 #ifndef SCHEDULER_JOB_QUEUE_SIZE
     #define SCHEDULER_JOB_QUEUE_SIZE 20
 #endif
+
 
 #if defined(ARDUINO_ARCH_AVR)
     #include <setjmp.h>

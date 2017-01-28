@@ -369,11 +369,17 @@ void Scheduler::processQueue()
     }
 }
 
+// Returns pointer to array of head of linked lists
+const SchedulerPriorityLevel Scheduler::getPLevels()
+{
+    return _pLevels;
+}
+
 #ifdef _PROCESS_STATISTICS
 bool Scheduler::updateStats()
 {
     QueableOperation op(QueableOperation::UPDATE_STATS);
-    return op.queue(_queue);
+    return op.queue();
 }
 
 

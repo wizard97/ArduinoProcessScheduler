@@ -57,6 +57,20 @@ I welcome any contributions! Here are some ideas:
 - Adding support for additional platforms
 - Any Examples!
 
+## IMPORTANT Contributing Guidelines
+There are three rules
+1. Follow the coding format
+2. Document all methods
+3. *MOST IMPORTANTLY*, all scheduling algorithms must have the following naming convention:
+    [Adjective][Person's Name], where both the name and adjective start with the same letter
+
+ex:
+- RoundRobin
+- PriorityPaul
+- SimpleSam
+
+Rules 1 and 2 are subjective, but rule 3 must absolutely be met or your contribution
+will not be accepted. Good luck :)
 
 ## License
-MIT.
+GNU GPLv3.
