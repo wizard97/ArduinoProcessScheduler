@@ -38,7 +38,7 @@ public:
     *
     * @return: p1 or p2
     */
-    static Process *Process::runWhich(Process *p1, Process *p2);
+    static Process *runWhich(Process *p1, Process *p2);
 
     ///////////////////// GETTERS /////////////////////////
 

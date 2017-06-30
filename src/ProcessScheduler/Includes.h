@@ -35,12 +35,6 @@ typedef enum ProcessWarning
 
 #define OVERSCHEDULED_NO_WARNING 0
 
-// Only can use negative values
-typedef SchedulerException
-{
-    ProcTimeout = -1000,
-    ProcYield,
-};
 #define LONGJMP_ISR_CODE -1000
 #define LONGJMP_YIELD_CODE -1001
 
