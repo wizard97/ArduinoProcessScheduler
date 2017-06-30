@@ -184,7 +184,7 @@ protected:
     * Handle uncaught Process exceptions from Process process with Exception code e
     * By default just restart it
     */
-    virtual void handleException(Process &process, int e);
+    virtual void handleException(Process *process, int e);
 #endif
     // Inner queue object class to queue scheduler jobs
     class QueableOperation

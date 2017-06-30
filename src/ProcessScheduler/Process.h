@@ -31,6 +31,15 @@ public:
     bool destroy();
     bool restart();
 
+
+    /*
+    * Give both processes that need to run p1 and p2
+    * return the process that should run first
+    *
+    * @return: p1 or p2
+    */
+    static Process *Process::runWhich(Process *p1, Process *p2);
+
     ///////////////////// GETTERS /////////////////////////
 
     // These methods are also the same as calling calling scheduler.method(process)
