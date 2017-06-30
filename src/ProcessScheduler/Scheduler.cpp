@@ -139,6 +139,7 @@ int Scheduler::run()
     if (_active) return 0;
 
     uint8_t count = 0;
+    uint32_t start = getCurrTS();
     for (uint8_t pLevel=0; pLevel < NUM_PRIORITY_LEVELS; pLevel++)
     {
         processQueue();
@@ -150,7 +151,6 @@ int Scheduler::run()
             continue;
 
         // find the highest priority process that needs to run
-        uint32_t start = getCurrTS();
         Process *torun = NULL;
 
         // Search for the best process
