@@ -196,7 +196,6 @@ int Scheduler::run()
 #ifdef _PROCESS_TIMEOUT_INTERRUPTS
             DISABLE_SCHEDULER_ISR();
 #endif
-        _active = NULL; //done!
         //////////////////////END PROCESS SERVICING//////////////////////
 
 #ifdef _PROCESS_STATISTICS
@@ -213,7 +212,8 @@ int Scheduler::run()
         if (_active->wasServiced(force)) {
             disable(*_active);
         }
-
+        _active = NULL; //done!
+        
         count++; // incr counter
         processQueue();
         delay(0); // For esp8266
