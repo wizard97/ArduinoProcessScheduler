@@ -238,6 +238,9 @@ protected:
     void procRestart(Process &process);
     void procHalt();
 
+    // Get runnable process in process linked list chain
+    Process *getRunnable(uint32_t start, Process *begin, Process *end=NULL);
+
     // Process the scheduler job queue
     void processQueue();
 

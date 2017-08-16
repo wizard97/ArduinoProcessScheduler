@@ -145,30 +145,17 @@ int Scheduler::run()
     {
         processQueue();
 
-        Process *tmp = _pLevels[pLevel].head;
+        // Resume looking where we left off in the list
+        Process *torun = getRunnable(start, _pLevels[pLevel].next, NULL);
 
-        // No processes at this priority level
-        if (!tmp)
-            continue;
-
-        // find the highest priority process that needs to run
-        Process *torun = NULL;
-
-        // Search for the best process
-        while(tmp) {
-            if (tmp->needsServicing(start)) {
-                if (torun) { //Compare which one needs to run more
-                    torun = Process::runWhich(torun, tmp);
-                } else { //torun is NULL so this is the best one to run
-                    torun = tmp;
-                }
-            }
-            tmp = tmp->getNext();
-        }
+        if (!torun && _pLevels[pLevel].next != _pLevels[pLevel].head)
+            torun = getRunnable(start, _pLevels[pLevel].head, _pLevels[pLevel].next);
 
         // No ready process found at this priority level
         if (!torun)
             continue;
+
+        _pLevels[pLevel].next = torun->hasNext() ? torun->getNext() : _pLevels[pLevel].head;
 
         /////////// Run the correct process /////////
         _active = torun;
@@ -223,6 +210,32 @@ int Scheduler::run()
     delay(0); // For esp8266
 
     return count;
+}
+
+
+// end is exclusive, end=NULL means go to entire end of list
+Process *Scheduler::getRunnable(uint32_t start, Process *begin, Process *end)
+{
+    if (!start)
+        return NULL;
+
+    Process *torun = NULL;
+    Process *tmp = begin;
+
+    // Search for the best process
+    while(tmp != end) {
+        if (tmp->needsServicing(start)) {
+            if (torun) { //Compare which one needs to run more
+                torun = Process::runWhich(torun, tmp);
+            } else { //torun is NULL so this is the best one to run
+                torun = tmp;
+            }
+        }
+
+        tmp = tmp->getNext();
+    }
+
+    return torun;
 }
 
 
