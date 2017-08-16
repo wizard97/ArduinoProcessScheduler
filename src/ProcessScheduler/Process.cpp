@@ -59,8 +59,9 @@
 
     bool Process::needsServicing(uint32_t start)
     {
-        return (isEnabled() && (_force ||
-            ((getPeriod() == SERVICE_CONSTANTLY || start - getScheduledTS() >= getPeriod()) &&
+        return (isEnabled() &&
+            (_force ||
+            ((getPeriod() == SERVICE_CONSTANTLY || timeToNextRun(start) <= 0) &&
             (getIterations() == RUNTIME_FOREVER || getIterations() > 0))));
     }
 

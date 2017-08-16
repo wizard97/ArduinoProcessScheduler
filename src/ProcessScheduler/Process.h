@@ -84,7 +84,9 @@ public:
     *
     * @return: int32_t time offset
     */
-    inline int32_t timeToNextRun() { return (_scheduledTS + _period) - _scheduler.getCurrTS(); }
+    inline int32_t timeToNextRun() { return timeToNextRun(_scheduler.getCurrTS()); }
+
+    inline int32_t timeToNextRun(uint32_t curr) { return (int32_t)((_scheduledTS + _period) - curr); }
 
 
     /*

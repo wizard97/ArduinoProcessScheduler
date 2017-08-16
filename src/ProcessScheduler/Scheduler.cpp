@@ -133,6 +133,7 @@ uint8_t Scheduler::countProcesses(int priority, bool enabledOnly)
     return count;
 }
 
+
 int Scheduler::run()
 {
     // Already running in another call frame
@@ -157,7 +158,7 @@ int Scheduler::run()
         while(tmp) {
             if (tmp->needsServicing(start)) {
                 if (torun) { //Compare which one needs to run more
-                    _active = Process::runWhich(torun, tmp);
+                    torun = Process::runWhich(torun, tmp);
                 } else { //torun is NULL so this is the best one to run
                     torun = tmp;
                 }
@@ -213,7 +214,7 @@ int Scheduler::run()
             disable(*_active);
         }
         _active = NULL; //done!
-        
+
         count++; // incr counter
         processQueue();
         delay(0); // For esp8266
