@@ -59,8 +59,9 @@
 
     bool Process::needsServicing(uint32_t start)
     {
-        return (isEnabled() && (_force ||
-            ((getPeriod() == SERVICE_CONSTANTLY || start - getScheduledTS() >= getPeriod()) &&
+        return (isEnabled() &&
+            (_force ||
+            ((getPeriod() == SERVICE_CONSTANTLY || timeToNextRun(start) <= 0) &&
             (getIterations() == RUNTIME_FOREVER || getIterations() > 0))));
     }
 
@@ -81,6 +82,21 @@
             _period = period;
         }
         ATOMIC_END
+    }
+
+
+    // both must need servicing
+    Process *Process::runWhich(Process *p1, Process *p2)
+    {
+        // All things being equal pick yes
+
+        // Compare forces
+        if (p1->forceSet() || p2->forceSet())
+            return p1->forceSet() ? p1 : p2;
+
+        // whichever one is more behind goes first
+        return (p1->timeToNextRun() <= p2->timeToNextRun()) ? p1 : p2;
+
     }
 
 

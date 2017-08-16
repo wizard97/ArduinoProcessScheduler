@@ -31,6 +31,15 @@ public:
     bool destroy();
     bool restart();
 
+
+    /*
+    * Give both processes that need to run p1 and p2
+    * return the process that should run first
+    *
+    * @return: p1 or p2
+    */
+    static Process *runWhich(Process *p1, Process *p2);
+
     ///////////////////// GETTERS /////////////////////////
 
     // These methods are also the same as calling calling scheduler.method(process)
@@ -75,7 +84,9 @@ public:
     *
     * @return: int32_t time offset
     */
-    inline int32_t timeToNextRun() { return (_scheduledTS + _period) - _scheduler.getCurrTS(); }
+    inline int32_t timeToNextRun() { return timeToNextRun(_scheduler.getCurrTS()); }
+
+    inline int32_t timeToNextRun(uint32_t curr) { return (int32_t)((_scheduledTS + _period) - curr); }
 
 
     /*

@@ -133,86 +133,109 @@ uint8_t Scheduler::countProcesses(int priority, bool enabledOnly)
     return count;
 }
 
+
 int Scheduler::run()
 {
     // Already running in another call frame
     if (_active) return 0;
 
     uint8_t count = 0;
+    uint32_t start = getCurrTS();
     for (uint8_t pLevel=0; pLevel < NUM_PRIORITY_LEVELS; pLevel++)
     {
         processQueue();
 
-        _active = _pLevels[pLevel].next;
-        if (!_active)
+        // Resume looking where we left off in the list
+        Process *torun = getRunnable(start, _pLevels[pLevel].next, NULL);
+
+        if (!torun && _pLevels[pLevel].next != _pLevels[pLevel].head)
+            torun = getRunnable(start, _pLevels[pLevel].head, _pLevels[pLevel].next);
+
+        // No ready process found at this priority level
+        if (!torun)
             continue;
 
-        /////////// Run the correct process /////////
-        uint32_t start = getCurrTS();
+        _pLevels[pLevel].next = torun->hasNext() ? torun->getNext() : _pLevels[pLevel].head;
 
-        if (_active->needsServicing(start))
-        {
-            bool force = _active->forceSet(); // Store whether it was a forced iteraiton
-            _active->willService(start);
+        /////////// Run the correct process /////////
+        _active = torun;
+        start = getCurrTS(); //update
+        bool force = _active->forceSet(); // Store whether it was a forced iteraiton
+        _active->willService(start);
 
 #ifdef _PROCESS_EXCEPTION_HANDLING
-            int ret = setjmp(_env);
+        int ret = setjmp(_env);
 
-#ifdef _PROCESS_TIMEOUT_INTERRUPTS
-            ENABLE_SCHEDULER_ISR();
-#endif
-            if (!ret) {
-                _active->service();
-            } else {
-                jmpHandler(ret);
-            }
-#else
+    // Enable the interrupts
+    #ifdef _PROCESS_TIMEOUT_INTERRUPTS
+        ENABLE_SCHEDULER_ISR();
+    #endif
+
+        if (!ret) {
             _active->service();
+        } else {
+            jmpHandler(ret);
+        }
+#else
+        _active->service();
 #endif
 
+// Disable the interrupts after the process returned
 #ifdef _PROCESS_TIMEOUT_INTERRUPTS
             DISABLE_SCHEDULER_ISR();
 #endif
+        //////////////////////END PROCESS SERVICING//////////////////////
 
 #ifdef _PROCESS_STATISTICS
-            uint32_t runTime = getCurrTS() - start;
-            // Make sure no overflow happens
-            if (_active->statsWillOverflow(1, runTime))
-                handleHistOverFlow(HISTORY_DIV_FACTOR);
+        uint32_t runTime = getCurrTS() - start;
+        // Make sure no overflow happens
+        if (_active->statsWillOverflow(1, runTime))
+            handleHistOverFlow(HISTORY_DIV_FACTOR);
 
-            _active->setHistIterations(_active->getHistIterations()+1);
-            _active->setHistRuntime(_active->getHistRunTime()+runTime);
+        _active->setHistIterations(_active->getHistIterations()+1);
+        _active->setHistRuntime(_active->getHistRunTime()+runTime);
 
 #endif
-            // Is it time to disable?
-            if (_active->wasServiced(force)) {
-                disable(*_active);
-            }
-
-            count++; // incr counter
+        // Is it time to disable?
+        if (_active->wasServiced(force)) {
+            disable(*_active);
         }
-        //////////////////////END PROCESS SERVICING//////////////////////
+        _active = NULL; //done!
+
+        count++; // incr counter
+        processQueue();
         delay(0); // For esp8266
+        break; // We found the process and serviced it, so were done
+    }
+    delay(0); // For esp8266
 
-        // Determine what to do next ///
-        if (!_active->hasNext()) {
-#ifdef _PROCESS_REORDERING
-            if(++_pLevels[pLevel].passes >= _PROCESS_REORDERING_AGGRESSIVENESS) {
-                reOrderProcs((ProcPriority)pLevel);
-                ++_pLevels[pLevel].passes = 0;
+    return count;
+}
+
+
+// end is exclusive, end=NULL means go to entire end of list
+Process *Scheduler::getRunnable(uint32_t start, Process *begin, Process *end)
+{
+    if (!start)
+        return NULL;
+
+    Process *torun = NULL;
+    Process *tmp = begin;
+
+    // Search for the best process
+    while(tmp != end) {
+        if (tmp->needsServicing(start)) {
+            if (torun) { //Compare which one needs to run more
+                torun = Process::runWhich(torun, tmp);
+            } else { //torun is NULL so this is the best one to run
+                torun = tmp;
             }
-#endif
-            _pLevels[pLevel].next = _pLevels[pLevel].head; // Set next to first
-        } else {
-            _pLevels[pLevel].next = _active->getNext(); // Set next and break
-            _active = NULL;
-            break;
         }
 
-        _active = NULL;
+        tmp = tmp->getNext();
     }
-    processQueue();
-    return count;
+
+    return torun;
 }
 
 
@@ -434,9 +457,15 @@ void Scheduler::handleHistOverFlow(uint8_t div)
         longjmp(_env, e);
     }
 
-    void Scheduler::handleException(Process &process, int e)
+    void Scheduler::handleException(Process *process, int e)
     {
-        process.restart();
+        // Exception came from process
+        if (process) {
+            process.restart();
+        } else {
+            // Exception came from scheduler
+
+        }
     }
 
 
@@ -457,7 +486,7 @@ void Scheduler::handleHistOverFlow(uint8_t div)
 
                 default:
                     if (!_active->handleException(e))
-                        handleException(*_active, e);
+                        handleException(_active, e);
                     break;
 
             }

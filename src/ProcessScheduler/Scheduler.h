@@ -191,7 +191,7 @@ protected:
     * Handle uncaught Process exceptions from Process process with Exception code e
     * By default just restart it
     */
-    virtual void handleException(Process &process, int e);
+    virtual void handleException(Process *process, int e);
 #endif
     // Inner queue object class to queue scheduler jobs
     class QueableOperation
@@ -244,6 +244,9 @@ protected:
     void procAdd(Process &process);
     void procRestart(Process &process);
     void procHalt();
+
+    // Get runnable process in process linked list chain
+    Process *getRunnable(uint32_t start, Process *begin, Process *end=NULL);
 
     // Process the scheduler job queue
     void processQueue();
