@@ -461,7 +461,7 @@ void Scheduler::handleHistOverFlow(uint8_t div)
     {
         // Exception came from process
         if (process) {
-            process.restart();
+            process->restart();
         } else {
             // Exception came from scheduler
 
