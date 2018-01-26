@@ -69,31 +69,85 @@ private:
 	int _pin; // The pin the LED is on
 };
 
-class BlinkerProcesses
+class BlinkProcessManager :public Process
 {
+private:
+	enum ProcessManagerStates
+	{
+		Step1,
+		Step2,
+		Step3
+	} ProcessManagerState = Step1;
 public:
 	// Call the Processes constructor's
-	BlinkerProcesses(Scheduler &manager) :
-		blink250(manager, HIGH_PRIORITY, 250, 13)
+	BlinkProcessManager(Scheduler &manager) :
+		Process(manager, LOW_PRIORITY, 1000)
+		, blink250(manager, HIGH_PRIORITY, 250, 13)
 		, blink500(manager, HIGH_PRIORITY, 500, 12)
-		, blink1000(manager, HIGH_PRIORITY, 1000, 11)
+		, blink1000(manager, MEDIUM_PRIORITY, 1000, 11)
 	{
 
 	}
 
-	void Start()
+	// Add our blink processes, without enabling them just yet
+	virtual void setup()
 	{
-		// Add and enable our blink processes
-		blink250.add(true); // Same as calling blink250.add() and blink250.enable();
-		blink500.add(true);
-		blink1000.add(true);
+		blink250.add();
+		blink500.add();
+		blink1000.add();
 	}
 
-	void Stop()
+	void start()
+	{
+		blink250.enable();
+		blink500.enable();
+		blink1000.enable();
+	}
+
+	void stop()
 	{
 		blink250.disable();
 		blink500.disable();
 		blink1000.disable();
+	}
+
+	//Disable sub-processes when disabled
+	virtual void onDisable()
+	{
+		stop();
+	}
+
+	//Enable sub-processes when enabled
+	virtual void onEnable()
+	{
+		start();
+	}
+
+	// Create our service routine
+	virtual void service()
+	{
+		switch (ProcessManagerState)
+		{
+		case BlinkProcessManager::Step1://Enable blinkers for 5 seconds
+			Serial.println(F("Blinkers enabled."));
+			start();
+			ProcessManagerState = BlinkProcessManager::Step2;
+			setPeriod(5000);
+			break;
+		case BlinkProcessManager::Step2://Disable blinkers for 5 seconds
+			Serial.println(F("Blinkers disabled."));
+			stop();
+			ProcessManagerState = BlinkProcessManager::Step3;
+			setPeriod(5000);
+			break;
+		case BlinkProcessManager::Step3://Sleep for 2 seconds
+			Serial.println(F("Blinker manager sleeping."));
+			ProcessManagerState = BlinkProcessManager::Step1;
+			setPeriod(2000);
+			break;
+		default:
+			break;
+		}
 	}
 
 
@@ -128,14 +182,14 @@ protected:
 
 Scheduler sched; // Create a global Scheduler object
 
-BlinkerProcesses Blinkers(sched); // Has 3 independent BlinkProcesses.
-LogProcess LogService(sched, LOW_PRIORITY, 5000); // Show a log message every 5000 ms
+BlinkProcessManager BlinkManager(sched); // Has 3 independent BlinkProcesses.
+LogProcess LogService(sched, LOW_PRIORITY, 10000); // Show a log message every 10000 ms
 
 void setup()
 {
 	// Add and enable our blink processes and custom process, sharing the scheduler.
 	LogService.add(true);
-	Blinkers.Start();
+	BlinkManager.add(true);
 }
 
 void loop()
