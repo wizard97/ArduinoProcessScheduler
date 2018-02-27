@@ -123,6 +123,13 @@ public:
 		start();
 	}
 
+	virtual void cleanup()
+	{
+		blink250.destroy();
+		blink500.destroy();
+		blink1000.destroy();
+	}
+
 	// Create our service routine
 	virtual void service()
 	{
