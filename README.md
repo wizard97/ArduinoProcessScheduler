@@ -1,7 +1,9 @@
 # ArduinoProcessScheduler
 A cooperative Arduino object oriented, cooperative process scheduler to replace them all.
 
-This fork is adds a wrapper for STM32 (Arduino_STM32) to implement the same basic Process interface, on top of object-oriented FreeRTOS TaskCpp.
+This fork is adds a wrapper for STM32 (Arduino_STM32) to implement the same basic Process interface, on top of object-oriented [FreeRTOS TaskCpp](https://github.com/GitMoDu/FreeRTOScpp).
+
+Depends on https://github.com/GitMoDu/FreeRTOScpp .
 
 ## What is this?
 As your Arduino projects get more complicated, you will begin to see the need for multitasking, or at least appear to multitask. Perhaps you want to check if a button was pressed as often as you can, but you only want to update a display once every second. Trying to do this on your own can quickly turn into overwhelming spagetti code involving `millis()`. `ArduinoProcessScheduler` seeks to simplify this. Simply create your custom Process that needs to be serviced at certain times, and let the scheduler handle the rest.
