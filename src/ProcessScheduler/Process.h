@@ -12,7 +12,7 @@ class Process
 public:
     /*
     * @param manager: The scheduler overseeing this Process
-    * @param priority: The prority of this Process defined in config.h
+    * @param priority: The priority of this Process defined in config.h
     * @param period: The period this process should be serviced at (SERVICE_CONSTANTLY = As often as possible)
     * @param iterations: Number of iterations this process should be serviced before being disabled (RUNTIME_FOREVER = infinite)
     * @param overSchedThresh: The periods behind this process can get, before a WARNING_PROC_OVERSCHEDULED is triggered
