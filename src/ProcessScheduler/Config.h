@@ -23,7 +23,7 @@
 
 typedef enum ProcPriority
 {
-    // Feel free to add custom prority levels in here
+    // Feel free to add custom priority levels in here
     ////////////// BEGIN //////////////////
     HIGH_PRIORITY = 0,
     MEDIUM_PRIORITY,
