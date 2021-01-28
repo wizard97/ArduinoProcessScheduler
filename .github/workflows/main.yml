@@ -32,6 +32,6 @@ jobs:
     - name: Install library dependencies
       run: pio lib -g install 667
     - name: Run PlatformIO
-      run: pio ci --lib="." --board=uno --board=d1_mini
+      run: pio ci --lib="." --board=uno --board=d1_mini --board=esp-wrover-kit
       env:
         PLATFORMIO_CI_SRC: ${{ matrix.example }}
