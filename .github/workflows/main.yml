@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        example: [examples/Ex_01_SayHello/Ex_01_SayHello.ino]
+        example: [examples/Ex_01_SayHello/Ex_01_SayHello.ino, examples/Ex_02_MultiBlink/Ex_02_MultiBlink.ino]
 
     steps:
     - uses: actions/checkout@v2
