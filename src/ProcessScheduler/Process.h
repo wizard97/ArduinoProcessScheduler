@@ -68,7 +68,7 @@ public:
     *
     * @return: period or SERVICE_CONSTANTLY
     */
-    inline unsigned int getPeriod() { return _period; }
+    inline uint32_t getPeriod() { return _period; }
 
     /*
     * Get the priority for this process
@@ -323,7 +323,7 @@ private:
     Scheduler &_scheduler;
     bool _enabled, _force;
     int _iterations;
-    unsigned int _period;
+    uint32_t _period;
     uint8_t _sid;
     uint32_t _scheduledTS, _actualTS;
     // Linked List
