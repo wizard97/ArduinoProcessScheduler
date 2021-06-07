@@ -86,7 +86,7 @@ typedef enum ProcessWarning
     #define DISABLE_SCHEDULER_ISR()
 
 #else
-    #error “This library only supports AVR and ESP8266 Boards.”
+    #error "This library only supports AVR and ESP8266 Boards."
 #endif
 
 
